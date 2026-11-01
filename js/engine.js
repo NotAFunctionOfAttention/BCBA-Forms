@@ -1,7 +1,7 @@
 // Turns a saved document (form answers + identifiers + wording edits) into a
 // document model that both the on-screen preview and the PDF render from.
 
-import { mark, hasMark, MARK_RE, lines, paras, fmtDate, esc, cap, joinList, uid } from './util.js';
+import { mark, hasMark, MARK_RE, lines, paras, fmtDate, esc, cap, joinList } from './util.js';
 
 // Identifiers shared by every document type. All optional except where the
 // form marks a date required: the clinician decides what goes on the record.
@@ -69,29 +69,6 @@ export function newDocData(form, settings) {
   return data;
 }
 
-// Starts a new document from a finished one (e.g. a BIP from an FBA). The
-// identifiers are copied, `link.map` fills the fields the two forms share, and
-// the new document records its source. It is a one-time copy: later edits to
-// either document do not affect the other.
-export function startFrom(link, srcForm, srcDoc, targetForm, settings) {
-  const data = newDocData(targetForm, settings);
-  const d = srcDoc.data || {};
-  for (const f of [...CLIENT_FIELDS, ...PROVIDER_FIELDS]) {
-    for (const k of [f.id, f.id + '_other', f.id + '__o']) {
-      if (d[k] !== undefined && d[k] !== '') data[k] = structuredClone(d[k]);
-    }
-  }
-  const mapped = link.map(d, srcDoc) || {};
-  for (const [k, v] of Object.entries(mapped)) {
-    if (v === undefined || v === '' || (Array.isArray(v) && !v.length)) continue;
-    data[k] = structuredClone(v);
-  }
-  return {
-    id: uid(), form: targetForm.id, created: Date.now(), updated: Date.now(), data, overrides: {},
-    source: { form: srcForm.id, id: srcDoc.id, title: srcForm.title, date: d.doc_date || '' },
-  };
-}
-
 // Values of a checkbox field as document phrases, plus any "Other" lines.
 export function multiValues(f, data) {
   const set = new Set(Array.isArray(data[f.id]) ? data[f.id] : []);
@@ -151,7 +128,7 @@ export function buildModel(form, doc) {
     ['Member ID', d.member_id],
     ...form.dates.map((f) => [f.label, fmtDate(d[f.id])]),
     ['Service setting', cap(joinList(multiValues(CLIENT_FIELDS[6], d)))],
-    ['Based on', doc.source ? `${doc.source.title}${doc.source.date ? ' dated ' + fmtDate(doc.source.date) : ''}` : ''],
+    ['Based on', (doc.sources || []).map((s) => `${s.title}${s.date ? ' dated ' + fmtDate(s.date) : ''}`).join('; ')],
     ['Prepared by', person(d.author_name, d.author_cred)],
     ['Supervising BCBA', person(d.sup_name, d.sup_cred) + (d.sup_cert ? ` (BACB #${String(d.sup_cert).trim()})` : '')],
   ].filter(([, val]) => String(val || '').trim());

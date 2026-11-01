@@ -56,39 +56,58 @@ const topItems = (d) => {
   const hi = byLevel(d, 'High');
   return hi.length ? hi : ranked(d.pa_results).slice(0, 2).map((r) => String(r.item).trim());
 };
-const whenDone = (d) => (d.assess_date || d.doc_date ? ` dated ${fmtDate(d.assess_date || d.doc_date)}` : '');
+const doneOn = (d) => d.assess_date || d.doc_date || '';
+
+// Top items across several assessments, newest first, without repeats.
+function combine(list) {
+  const sorted = [...list].sort((a, b) => String(doneOn(b)).localeCompare(String(doneOn(a))));
+  const seen = new Set();
+  const items = [];
+  for (const d of sorted) {
+    for (const it of topItems(d)) {
+      const key = it.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); items.push(it); }
+    }
+  }
+  return { items, dates: [...new Set(sorted.map(doneOn).filter(Boolean))].map(fmtDate) };
+}
 
 export default {
   id: 'pref',
   title: 'Preference Assessment',
   fileTag: 'PrefAssessment',
+  sourceDate: 'assess_date',
   dates: [
     { id: 'doc_date', label: 'Date of report', required: true },
     { id: 'assess_date', label: 'Date of assessment' },
   ],
   guardianSignature: false,
 
+  // Several preference assessments can feed one document; their top items are
+  // combined, most recent assessment first.
   next: [
     {
       to: 'skill',
+      multiple: true,
       label: 'Start a skill program using these reinforcers',
       carries: 'highest-preference items as the program\u2019s reinforcers',
-      map: (d) => {
-        const top = topItems(d);
+      map: (list) => {
+        const { items, dates } = combine(list);
         return {
-          sk_reinforcer: top.length ? `access to ${orJoin(top)} and behavior-specific praise` : '',
-          sk_rationale: top.length ? `Reinforcers were selected from the preference assessment${whenDone(d)}.` : '',
+          sk_reinforcer: items.length ? [`access to ${orJoin(items)}`, 'behavior-specific praise'] : [],
+          sk_rationale: items.length ? `Reinforcers were selected from the preference ${dates.length > 1 ? 'assessments' : 'assessment'}${dates.length ? ' dated ' + joinList(dates) : ''}.` : '',
         };
       },
     },
     {
       to: 'bip',
+      multiple: true,
       label: 'Start a BIP using these reinforcers',
       carries: 'highest-preference items as reinforcers for the replacement behavior',
-      map: (d) => {
-        const top = topItems(d);
+      map: (list) => {
+        const { items, dates } = combine(list);
         return {
-          teach_notes: top.length ? `Reinforcers for the replacement behavior will include ${joinList(top)}, identified as highly preferred in the preference assessment${whenDone(d)}.` : '',
+          teach_notes: items.length ? `Reinforcers for the replacement behavior will include ${joinList(items)}, identified as highly preferred in the preference ${dates.length > 1 ? 'assessments' : 'assessment'}${dates.length ? ' dated ' + joinList(dates) : ''}.` : '',
         };
       },
     },

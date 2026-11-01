@@ -33,7 +33,18 @@ Each option carries the exact phrase that goes into the document, so picking an 
 
 ## Linked documents
 
-A finished document can start the next one from **Next steps** at the bottom of its Enter tab. The new document copies the client and provider details plus the items below, and shows the earlier document under "Based on" in its header. It is a one-time copy; later edits to either document do not affect the other.
+Documents can draw answers from earlier ones in two ways:
+
+- **Next steps** at the bottom of a finished document starts the next one from it.
+- **Based on** at the top of a document links earlier ones to it: pick a document on this device, or upload a PDF this app exported (e.g. last week's preference assessment). A BIP or skill program can link several preference assessments; their top items are combined, newest first. A skill program can link preference assessments and a BIP at the same time, and fields both can fill (reinforcers, rationale) combine.
+
+A linked document fills only answers that are blank, still at their default, or that it filled before and you have not changed. Removing a link takes back what it filled and recalculates from the remaining links. Linking a document for a different client asks for confirmation. Each document keeps a snapshot of what it used (`doc.sources`), so later edits to the earlier document do not change it, and the earlier document is listed under "Based on" in the PDF header.
+
+### Re-import data in PDFs
+
+Exported PDFs carry the document's answers (images excluded) as base64 JSON in a custom PDF metadata field, `AbaDocsData`. It never appears on a page. Uploading such a PDF restores the answers, on this device or another. It can be turned off in Settings → Exported PDFs, e.g. for copies going to a payer. Scanned or re-typed copies lose it; PDFs exported before v0.6.0 do not have it.
+
+Home → **Open it here** imports a PDF as a document on this device.
 
 | From | To | Carries over |
 |---|---|---|
@@ -44,7 +55,7 @@ A finished document can start the next one from **Next steps** at the bottom of 
 | Preference Assessment | BIP | Highest-preference items as reinforcers for the replacement behavior |
 | Skill Acquisition Program | Visual Analysis | Program and measure, teaching phase, mastery criterion as the review target |
 
-Links are defined in each form's `next` list and created by `startFrom()` in `js/engine.js`.
+Links are defined in each source form's `next` list (`multiple: true` lets several sources feed one document; a target field marked `combine` merges values from different kinds of source). The logic lives in `js/links.js`.
 
 ## Using it
 
@@ -80,6 +91,7 @@ Edit the files, bump `VERSION` in `sw.js`, re-upload. Installed copies update on
 | `index.html` | Shell and security policy |
 | `js/main.js` | Screens: documents, editor, settings |
 | `js/engine.js` | Identifier fields, document model, on-screen preview |
+| `js/links.js` | Linked documents, fill rules, re-import data in PDFs |
 | `js/pdf.js` | PDF layout (pdfmake) |
 | `js/forms/` | One file per document type (`behavior-suggest.js` holds the BIP's answer-driven suggestions) |
 | `js/store.js` | IndexedDB storage |

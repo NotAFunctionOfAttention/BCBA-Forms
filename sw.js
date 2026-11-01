@@ -1,9 +1,9 @@
 // Offline cache. Serves the app's own files only; it never fetches anything
 // on behalf of the page beyond them.
-const VERSION = 'aba-docs-v0.5.0';
+const VERSION = 'aba-docs-v0.6.0';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
-  'js/main.js', 'js/util.js', 'js/store.js', 'js/crypto.js', 'js/engine.js', 'js/pdf.js',
+  'js/main.js', 'js/util.js', 'js/store.js', 'js/crypto.js', 'js/engine.js', 'js/pdf.js', 'js/links.js',
   'js/forms/index.js', 'js/forms/bip.js', 'js/forms/fba.js', 'js/forms/preference.js', 'js/forms/skill.js', 'js/forms/visual.js', 'js/forms/behavior-suggest.js', 'js/forms/common.js',
   'vendor/pdfmake.min.js', 'vendor/vfs_fonts.js',
   'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',

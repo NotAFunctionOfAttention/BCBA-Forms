@@ -174,3 +174,20 @@ table.grid td.calc { white-space: nowrap; color: var(--muted); font-size: 13px; 
 .links-list { margin: 10px 0 0; padding-left: 18px; font-size: 14px; }
 .links-list li { margin-bottom: 8px; }
 .links-list span { display: block; color: var(--muted); }
+
+/* Based on (linked sources) */
+.sources { padding: 4px 16px 12px; }
+.sources h3 { margin: 12px 0 4px; font-size: 16px; }
+.source-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.source-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.source-list li:first-child { border-top: none; }
+.source-list a.link { color: var(--accent); font-size: 13px; padding: 2px 4px; }
+.source-add { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.source-msg { background: var(--edit-bg); border-radius: 8px; padding: 8px 10px; font-size: 14px; margin: 10px 0 0; }
+.links-how { font-size: 14px; padding-left: 18px; margin: 8px 0 0; }
+.import-line { margin: 12px 0 0; }
+dialog.picker { max-width: min(92vw, 480px); }
+.pick-list { list-style: none; padding: 0; margin: 8px 0; max-height: 50vh; overflow: auto; }
+.pick-list li { margin-bottom: 6px; }
+.pick-list button { width: 100%; text-align: left; display: flex; flex-direction: column; }
+.pick-list span { color: var(--muted); font-size: 13px; }

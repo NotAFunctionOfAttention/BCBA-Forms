@@ -142,7 +142,7 @@ export default {
           sk_def: repl ? `${thirdPerson(repl)}${modes.length ? ' using ' + orJoin(modes) : ''}, without a prompt, when the opportunity is presented` : '',
           sk_format: d.teach_proc ? frag(d.teach_proc) : '',
           sk_fading: d.teach_fade, sk_sched: d.teach_sched, sk_thin: d.teach_thin,
-          sk_reinforcer: reinf.length ? joinList(reinf) : '',
+          sk_reinforcer: reinf,
           sk_data_who: d.dc_who, sk_data_who_other: d.dc_who_other,
         };
       },
@@ -204,7 +204,7 @@ export default {
         { id: 'teach_fade', label: 'Prompt fading', type: 'combo', options: FADING, optional: true },
         { id: 'teach_sched', label: 'Initial reinforcement schedule', type: 'combo', options: SCHEDULES },
         { id: 'teach_thin', label: 'Schedule thinning', type: 'combo', options: THINNING, optional: true },
-        { id: 'teach_notes', label: 'Additional teaching details', type: 'textarea', optional: true, hint: 'Optional. Full sentences.', suggest: S.teachNotes },
+        { id: 'teach_notes', label: 'Additional teaching details', type: 'textarea', optional: true, combine: 'paragraphs', hint: 'Optional. Full sentences.', suggest: S.teachNotes },
       ],
     },
     {

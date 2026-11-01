@@ -1,6 +1,7 @@
 import * as store from './store.js';
 import { FORMS, formById } from './forms/index.js';
-import { CLIENT_FIELDS, PROVIDER_FIELDS, newDocData, buildModel, modelToHTML, allFields, startFrom } from './engine.js';
+import { CLIENT_FIELDS, PROVIDER_FIELDS, newDocData, buildModel, modelToHTML, allFields } from './engine.js';
+import { LINKS, linksInto, linksFrom, addSource, removeSource, startFrom, upgrade, pdfPayload, readPdf } from './links.js';
 import { makePdfBlob } from './pdf.js';
 import { encryptJSON, decryptJSON } from './crypto.js';
 import { esc, uid, fmtDate } from './util.js';
@@ -24,6 +25,48 @@ function dialog(html, { onOpen } = {}) {
 const alertBox = (title, body) => dialog(`<h3>${esc(title)}</h3>${body}<div class="actions"><button value="ok" class="primary">OK</button></div>`);
 const confirmBox = async (title, body, okLabel = 'Delete') =>
   !!(await dialog(`<h3>${esc(title)}</h3><p>${esc(body)}</p><div class="actions"><button value="cancel">Cancel</button><button value="ok" class="danger">${esc(okLabel)}</button></div>`));
+
+// Choose a document on this device, or upload a PDF. Resolves to a doc id, 'upload', or null.
+function pickDialog(title, intro, docs) {
+  return new Promise((resolve) => {
+    const d = document.createElement('dialog');
+    d.className = 'picker';
+    d.innerHTML = `<h3>${esc(title)}</h3><p class="small">${esc(intro)}</p>
+      ${docs.length ? `<ul class="pick-list">${docs.map((x) => `<li><button type="button" data-pick="${esc(x.id)}"><strong>${esc(x.data.client_name || 'No client name')}</strong><span>${esc(fmtDate(x.data.doc_date))}${x.imported ? ' · imported from PDF' : ''}</span></button></li>`).join('')}</ul>` : '<p class="muted small">None on this device.</p>'}
+      <div class="actions"><button type="button" data-pick="cancel">Cancel</button><button type="button" class="primary" data-pick="upload">Upload a PDF…</button></div>`;
+    document.body.appendChild(d);
+    d.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-pick]');
+      if (!b) return;
+      const v = b.dataset.pick;
+      d.close();
+      d.remove();
+      resolve(v === 'cancel' ? null : v);
+    });
+    d.addEventListener('cancel', () => { d.remove(); resolve(null); });
+    d.showModal();
+  });
+}
+
+function chooseFile(accept) {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.onchange = () => resolve(input.files[0] || null);
+    input.click();
+  });
+}
+
+// Reads a PDF made by this app. If the document is already on this device,
+// that copy is used. `keep()` saves an uploaded one; call it only once the
+// person has confirmed they want it.
+async function importPdf(file) {
+  const { form, doc } = await readPdf(file);
+  const existing = await store.getDoc(doc.id);
+  if (existing) return { form, doc: upgrade(existing), existed: true, keep: async () => {} };
+  return { form, doc, existed: false, keep: () => store.putDoc(doc) };
+}
 
 async function saveFile(blob, name) {
   const file = new File([blob], name, { type: blob.type });
@@ -52,15 +95,20 @@ async function route() {
 // ---------- Home ----------
 
 function linksCard() {
-  const items = FORMS.flatMap((f) => (f.next || []).map((l) => {
-    const to = formById(l.to);
-    return `<li><strong>${esc(f.title)} \u2192 ${esc(to.title)}</strong><span>Carries over the ${esc(l.carries)}.</span></li>`;
-  }));
+  const items = LINKS.map((l) => {
+    const from = formById(l.from), to = formById(l.to);
+    return `<li><strong>${esc(from.title)} \u2192 ${esc(to.title)}</strong><span>Carries over the ${esc(l.carries)}.${l.multiple ? ' More than one can be linked; their items are combined.' : ''}</span></li>`;
+  });
   return `<section class="card links-card">
     <details>
       <summary><h2>How documents connect</h2></summary>
-      <p>A finished document can start the next one. Open it, go to <strong>Next steps</strong> at the bottom of the Enter tab, and choose what to start. The new document copies the client and provider details plus the items listed below, and lists the earlier document under \u201cBased on\u201d in its header.</p>
-      <p>Everything copied stays editable. It is a one-time copy: changing either document later does not change the other.</p>
+      <p>Documents can draw answers from earlier ones in two ways:</p>
+      <ul class="links-how">
+        <li><strong>Next steps</strong> at the bottom of a finished document starts the next one from it.</li>
+        <li><strong>Based on</strong> at the top of a document links earlier ones to it. Pick a document on this device, or upload a PDF this app exported, for example a preference assessment from last week.</li>
+      </ul>
+      <p>Linked documents fill only answers that are blank, or that they filled and you have not changed, so nothing you typed is overwritten. Removing a link takes back what it filled. The new document lists its sources under \u201cBased on\u201d in its header. It keeps its own copy of what it used, so later changes to the earlier document do not change it.</p>
+      <p class="muted small">PDFs exported by this app carry a hidden copy of their answers so they can be uploaded later. It never appears on the page and can be turned off in Settings.</p>
       <p class="muted small">A typical sequence: FBA \u2192 BIP \u2192 a skill program for the replacement behavior \u2192 visual analysis of each program\u2019s data. A preference assessment can supply reinforcers to a BIP or a skill program at any point.</p>
       <ul class="links-list">${items.join('')}</ul>
     </details>
@@ -75,13 +123,14 @@ async function showHome() {
       <section class="card">
         <h2>New document</h2>
         <div class="new-list">${FORMS.map((f) => `<button class="primary" data-new="${f.id}">${esc(f.title)}</button>`).join('')}</div>
+        <p class="small muted import-line">Have a PDF this app exported earlier? <button class="link" data-import="1">Open it here</button> to keep working with it on this device.</p>
       </section>
       ${linksCard()}
       <section class="card">
         <h2>Documents on this device</h2>
         ${docs.length ? '<ul class="doc-list">' + docs.map((d) => {
           const f = formById(d.form);
-          return `<li><a href="#doc/${d.id}"><strong>${esc(f ? f.title : d.form)}</strong><span>${esc(d.data.client_name || 'No client name')} · ${esc(fmtDate(d.data.doc_date))}</span></a>
+          return `<li><a href="#doc/${d.id}"><strong>${esc(f ? f.title : d.form)}</strong><span>${esc(d.data.client_name || 'No client name')} · ${esc(fmtDate(d.data.doc_date))}${d.imported ? ' · imported from PDF' : ''}</span></a>
             <div class="row-actions"><button class="link" data-dup="${d.id}">Duplicate</button><button class="link danger-text" data-del="${d.id}">Delete</button></div></li>`;
         }).join('') + '</ul>' : '<p class="muted">No documents yet.</p>'}
       </section>
@@ -91,6 +140,19 @@ async function showHome() {
   app.onclick = async (e) => {
     const t = e.target.closest('button');
     if (!t) return;
+    if (t.dataset.import) {
+      const file = await chooseFile('application/pdf,.pdf');
+      if (!file) return;
+      try {
+        const { doc, existed, keep } = await importPdf(file);
+        await keep();
+        if (existed) await alertBox('Already on this device', '<p>This document is already on this device, so the copy here was opened instead.</p>');
+        location.hash = 'doc/' + doc.id;
+      } catch (err) {
+        alertBox('Could not open the PDF', `<p>${esc(err.message)}</p>`);
+      }
+      return;
+    }
     if (t.dataset.new) {
       const form = formById(t.dataset.new);
       const doc = { id: uid(), form: form.id, created: Date.now(), updated: Date.now(), data: newDocData(form, await store.getSettings()), overrides: {} };
@@ -330,11 +392,17 @@ function groupHTML(title, fields, data, open = true, extra = '') {
   return `<details class="group"${open ? ' open' : ''}><summary>${esc(title)}</summary>${fields.map((f) => fieldHTML(f, data)).join('')}${extra}</details>`;
 }
 
+let sourceMsg = '';
+let sourceMsgFor = '';
+
 async function showEditor(id) {
-  window.scrollTo(0, 0);
-  const doc = await store.getDoc(id);
-  if (!doc) { location.hash = ''; return; }
+  if (sourceMsgFor !== id) { sourceMsgFor = id; sourceMsg = ''; window.scrollTo(0, 0); }
+  const stored = await store.getDoc(id);
+  if (!stored) { location.hash = ''; return; }
+  const doc = upgrade(stored);
   const form = formById(doc.form);
+  const incoming = linksInto(form.id);
+  const outgoing = linksFrom(form.id);
   doc.overrides = doc.overrides || {};
   let model;
 
@@ -347,15 +415,25 @@ async function showEditor(id) {
     <div class="tabs" role="tablist"><button data-tab="form" class="on">Enter</button><button data-tab="preview">Review</button></div>
     <main class="editor" data-show="form">
       <form class="ed-form" autocomplete="off">
-        ${doc.source ? `<p class="from-note">Started from the <a href="#doc/${esc(doc.source.id)}">${esc(doc.source.title)}</a>${doc.source.date ? ' dated ' + esc(fmtDate(doc.source.date)) : ''}. Copied answers can be edited.</p>` : ''}
+        ${incoming.length ? `<section class="group sources"><h3>Based on</h3>
+          <p class="hint">Link earlier documents to fill in the answers they share with this one. They fill only blank answers, never ones you typed. Pick a document on this device or upload a PDF this app exported.</p>
+          ${(doc.sources || []).length ? `<ul class="source-list">${doc.sources.map((s) => `<li><span><strong>${esc(s.title)}</strong>${s.date ? ' dated ' + esc(fmtDate(s.date)) : ''}${s.client ? ' · ' + esc(s.client) : ''}</span>
+            <span class="row-actions"><a class="link" href="#doc/${esc(s.id)}" data-open="${esc(s.id)}">Open</a><button type="button" class="link danger-text" data-unlink="${esc(s.id)}">Remove</button></span></li>`).join('')}</ul>` : ''}
+          <div class="source-add">${incoming.map((l) => {
+            const has = (doc.sources || []).some((s) => s.form === l.from);
+            const t = formById(l.from).title;
+            return `<button type="button" class="small" data-link="${l.from}">${l.multiple ? '+ Add a' : has ? 'Change the' : '+ Link a'} ${esc(t)}</button>`;
+          }).join('')}</div>
+          ${sourceMsg ? `<p class="source-msg">${esc(sourceMsg)}</p>` : ''}
+        </section>` : ''}
         ${groupHTML('Client', CLIENT_FIELDS, doc.data)}
         ${groupHTML('Document', form.dates.map((f) => ({ ...f, type: 'date' })), doc.data, true,
           `<label class="check"><input type="checkbox" id="sig_guardian"${doc.data.sig_guardian ? ' checked' : ''}> Include parent/guardian signature line</label>`)}
         ${groupHTML('Provider', PROVIDER_FIELDS, doc.data, false)}
         ${form.groups.map((g) => groupHTML(g.title, g.fields, doc.data)).join('')}
-        ${(form.next || []).length ? `<section class="group next-steps"><h3>Next steps</h3>
-          <p class="hint">Start a new document from this one. It copies the client and provider details and the items listed; nothing in this document changes.</p>
-          ${form.next.map((l, i) => `<div class="next-item"><button type="button" class="primary" data-next="${i}">${esc(l.label)}</button><small class="hint">Carries over the ${esc(l.carries)}.</small></div>`).join('')}
+        ${outgoing.length ? `<section class="group next-steps"><h3>Next steps</h3>
+          <p class="hint">Start a new document from this one. It copies the client and provider details and the items listed; nothing in this document changes. To add this document to one you already started, use Based on in that document instead.</p>
+          ${outgoing.map((l, i) => `<div class="next-item"><button type="button" class="primary" data-next="${i}">${esc(l.label)}</button><small class="hint">Carries over the ${esc(l.carries)}.</small></div>`).join('')}
         </section>` : ''}
       </form>
       <div class="ed-preview"><div id="preview"></div></div>
@@ -363,6 +441,7 @@ async function showEditor(id) {
 
   const preview = $('#preview');
   const editorEl = $('.editor');
+  sourceMsg = '';
 
   let saveTimer;
   const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => { doc.updated = Date.now(); store.putDoc(doc); }, 300); };
@@ -380,15 +459,60 @@ async function showEditor(id) {
   $('#sig_guardian').addEventListener('change', (e) => { doc.data.sig_guardian = e.target.checked; save(); soon(); });
   formEl.addEventListener('submit', (e) => e.preventDefault());
   formEl.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-next]');
-    if (!b) return;
-    const link = form.next[+b.dataset.next];
-    clearTimeout(saveTimer);
-    doc.updated = Date.now();
-    await store.putDoc(doc);
-    const created = startFrom(link, form, doc, formById(link.to), await store.getSettings());
-    await store.putDoc(created);
-    location.hash = 'doc/' + created.id;
+    const flush = async () => { clearTimeout(saveTimer); doc.updated = Date.now(); await store.putDoc(doc); };
+    const nextBtn = e.target.closest('[data-next]');
+    if (nextBtn) {
+      const link = outgoing[+nextBtn.dataset.next];
+      await flush();
+      const created = startFrom(form, doc, formById(link.to), await store.getSettings());
+      await store.putDoc(created);
+      location.hash = 'doc/' + created.id;
+      return;
+    }
+    const unlink = e.target.closest('[data-unlink]');
+    if (unlink) {
+      const r = removeSource(form, doc, unlink.dataset.unlink);
+      sourceMsg = `Link removed.${r.cleared ? ` ${r.cleared} answer${r.cleared > 1 ? 's' : ''} it had filled ${r.cleared > 1 ? 'were' : 'was'} cleared.` : ''}${r.filled ? ` ${r.filled} answer${r.filled > 1 ? 's were' : ' was'} updated from the remaining links.` : ''}`;
+      await flush();
+      showEditor(doc.id);
+      return;
+    }
+    const linkBtn = e.target.closest('[data-link]');
+    if (!linkBtn) return;
+    const srcForm = formById(linkBtn.dataset.link);
+    const already = new Set((doc.sources || []).map((s) => s.id));
+    const client = String(doc.data.client_name || '').trim().toLowerCase();
+    const candidates = (await store.listDocs())
+      .filter((x) => x.form === srcForm.id && !already.has(x.id))
+      .sort((a, b) => (String(b.data.client_name || '').trim().toLowerCase() === client) - (String(a.data.client_name || '').trim().toLowerCase() === client) || String(b.data.doc_date).localeCompare(String(a.data.doc_date)));
+    const pick = await pickDialog(`Link a ${srcForm.title}`, client ? 'Documents for this client are listed first.' : 'Newest first.', candidates);
+    if (!pick) return;
+    let src;
+    let keep = async () => {};
+    try {
+      if (pick === 'upload') {
+        const file = await chooseFile('application/pdf,.pdf');
+        if (!file) return;
+        const got = await importPdf(file);
+        if (got.form.id !== srcForm.id) throw new Error(`That PDF is a ${got.form.title}, not a ${srcForm.title}.`);
+        src = got.doc;
+        keep = got.keep;
+      } else {
+        src = await store.getDoc(pick);
+      }
+    } catch (err) {
+      alertBox('Could not link the document', `<p>${esc(err.message)}</p>`);
+      return;
+    }
+    const theirs = String(src.data.client_name || '').trim();
+    if (client && theirs && theirs.toLowerCase() !== client) {
+      if (!(await confirmBox('Different client', `That ${srcForm.title} is for ${theirs}, but this document is for ${doc.data.client_name}. Link it anyway?`, 'Link anyway'))) return;
+    }
+    await keep();
+    const r = addSource(form, doc, srcForm, src);
+    sourceMsg = `Linked the ${srcForm.title}. ${r.filled ? `${r.filled} answer${r.filled > 1 ? 's were' : ' was'} filled in.` : 'No blank answers needed filling.'}${r.kept ? ` ${r.kept} answer${r.kept > 1 ? 's' : ''} you had already entered ${r.kept > 1 ? 'were' : 'was'} kept.` : ''}`;
+    await flush();
+    showEditor(doc.id);
   });
 
   document.querySelector('.tabs').onclick = (e) => {
@@ -447,7 +571,8 @@ async function showEditor(id) {
     const btn = $('#export');
     btn.disabled = true; btn.textContent = 'Building…';
     try {
-      const blob = await makePdfBlob(model);
+      const settings = await store.getSettings();
+      const blob = await makePdfBlob(model, settings.embedData === false ? null : pdfPayload(form, doc));
       await saveFile(blob, model.fileName);
     } catch (err) {
       await alertBox('Export failed', `<p>${esc(err.message || err)}</p>`);
@@ -473,6 +598,11 @@ async function showSettings() {
           <button class="primary" type="submit">Save defaults</button> <span id="saved" class="muted small"></span></form>
       </section>
       <section class="card">
+        <h2>Exported PDFs</h2>
+        <label class="check"><input type="checkbox" id="embedData"${s.embedData === false ? '' : ' checked'}> Include re-import data in exported PDFs</label>
+        <p class="muted small">When on, each PDF carries a hidden copy of the document\u2019s answers so it can be uploaded later to link it to another document or keep working on it. It is not shown on any page, and it holds the same information the PDF already shows. Turn it off before exporting a copy you want to contain only what is visible, for example one going to a payer.</p>
+      </section>
+      <section class="card">
         <h2>Backup</h2>
         <p class="muted small">Backups are encrypted with a passphrase you choose. Without it the file cannot be opened, by you or anyone else, so keep the passphrase somewhere safe.</p>
         <div class="new-list"><button id="backup">Save encrypted backup</button><button id="restore">Restore from backup</button></div>
@@ -487,10 +617,16 @@ async function showSettings() {
   bindFields($('#prov'), prov, () => { $('#saved').textContent = ''; });
   $('#prov').onsubmit = async (e) => {
     e.preventDefault();
-    const next = { ...s };
+    const next = { ...(await store.getSettings()) };
     PROVIDER_FIELDS.forEach((f) => { next[f.id] = String(prov[f.id] ?? '').trim(); });
     await store.putSettings(next);
     $('#saved').textContent = 'Saved.';
+  };
+
+  $('#embedData').onchange = async (e) => {
+    const cur = await store.getSettings();
+    cur.embedData = e.target.checked;
+    await store.putSettings(cur);
   };
 
   $('#backup').onclick = async () => {

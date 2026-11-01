@@ -85,7 +85,7 @@ function signatures(signers) {
   };
 }
 
-export function modelToPdf(m) {
+export function modelToPdf(m, payload) {
   const p = m.practice;
   const content = [];
 
@@ -109,7 +109,7 @@ export function modelToPdf(m) {
   return {
     pageSize: 'LETTER',
     pageMargins: [54, 64, 54, 58],
-    info: { title: m.title, subject: m.title, creator: m.practice.name || '', producer: m.practice.name || '' },
+    info: { title: m.title, subject: m.title, creator: m.practice.name || '', producer: m.practice.name || '', ...(payload ? { AbaDocsData: payload } : {}) },
     header: (page) => (page === 1 ? null : {
       columns: [
         { text: m.clientLine, alignment: 'left' },
@@ -148,10 +148,10 @@ export function modelToPdf(m) {
   };
 }
 
-export function makePdfBlob(model) {
+export function makePdfBlob(model, payload) {
   return new Promise((resolve, reject) => {
     try {
-      window.pdfMake.createPdf(modelToPdf(model)).getBlob(resolve);
+      window.pdfMake.createPdf(modelToPdf(model, payload)).getBlob(resolve);
     } catch (e) {
       reject(e);
     }

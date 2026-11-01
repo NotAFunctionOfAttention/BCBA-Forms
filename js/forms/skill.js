@@ -185,7 +185,7 @@ export default {
       fields: [
         { id: 'sk_name', label: 'Program', type: 'combo', options: PROGRAM_COMBO, hint: 'Choosing a common program fills suggestions below.' },
         {
-          id: 'sk_rationale', label: 'Rationale', type: 'textarea', hint: 'Link to an assessment result or a family goal. Full sentences.',
+          id: 'sk_rationale', label: 'Rationale', type: 'textarea', combine: 'paragraphs', hint: 'Link to an assessment result or a family goal. Full sentences.',
           suggest: [
             'This skill was identified as a deficit on the VB-MAPP.',
             'This skill was identified as a deficit on the ABLLS-R.',
@@ -248,7 +248,7 @@ export default {
     {
       title: 'Reinforcement and mastery',
       fields: [
-        { id: 'sk_reinforcer', label: 'Reinforcers', hint: 'What and how much. e.g. 20 seconds with a preferred toy and behavior-specific praise' },
+        { id: 'sk_reinforcer', label: 'Reinforcers', combine: 'and', hint: 'What and how much. e.g. 20 seconds with a preferred toy and behavior-specific praise' },
         { id: 'sk_sched', label: 'Reinforcement schedule', type: 'combo', options: SCHEDULES },
         { id: 'sk_thin', label: 'Schedule thinning', type: 'combo', options: THINNING, optional: true },
         { id: 'sk_mastery', label: 'Mastery criterion', type: 'combo', options: MASTERY },
