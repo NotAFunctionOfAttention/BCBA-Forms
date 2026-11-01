@@ -138,3 +138,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 dialog h3 { margin: 0 0 10px; }
 .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .missing-list { max-height: 50vh; overflow: auto; padding-left: 20px; }
+
+/* Dropdowns with "Other", checkbox groups, suggestions */
+[hidden] { display: none !important; }
+.other-input { margin-top: 6px; }
+fieldset.checks .hint { display: block; margin-bottom: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--bg); text-align: left; }

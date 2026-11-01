@@ -96,10 +96,14 @@ async function showHome() {
 
 // ---------- Editor ----------
 
-function fieldHTML(f, value) {
+const OTHER = '__other';
+
+function fieldHTML(f, data) {
+  const value = data[f.id] ?? '';
   const id = 'f_' + f.id;
   const hint = f.hint ? `<small class="hint">${esc(f.hint)}</small>` : '';
   const opt = f.optional ? ' <span class="muted">(optional)</span>' : '';
+  const chips = f.suggest ? `<div class="chips">${f.suggest.map((t) => `<button type="button" class="chip" data-chip="${f.id}" data-text="${esc(t)}">+ ${esc(t)}</button>`).join('')}</div>` : '';
   let input;
   switch (f.type) {
     case 'textarea':
@@ -110,21 +114,81 @@ function fieldHTML(f, value) {
       input = `<input type="date" id="${id}" data-id="${f.id}" value="${esc(value)}">`;
       break;
     case 'select':
-      input = `<select id="${id}" data-id="${f.id}">${f.options.map(([k, l]) => `<option value="${k}"${k === value ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+      input = `<select id="${id}" data-id="${f.id}">${f.options.map(([k, l]) => `<option value="${esc(k)}"${k === value ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
       break;
-    case 'checks': {
+    case 'combo': {
+      // Stored value is the document phrase itself; anything not in the list is "Other".
+      const phrases = f.options.map((o) => o[1] ?? o[0]);
+      const isOther = data[f.id + '__o'] || (String(value).trim() !== '' && !phrases.includes(value));
+      input = `<select id="${id}" data-combo="${f.id}"><option value="">Choose…</option>${f.options.map((o) => {
+        const ph = o[1] ?? o[0];
+        return `<option value="${esc(ph)}"${!isOther && ph === value ? ' selected' : ''}>${esc(o[0])}</option>`;
+      }).join('')}<option value="${OTHER}"${isOther ? ' selected' : ''}>Other (type your own)</option></select>
+      <input type="text" class="other-input" data-id="${f.id}" value="${isOther ? esc(value) : ''}" placeholder="Type your answer" autocomplete="off"${isOther ? '' : ' hidden'}>`;
+      break;
+    }
+    case 'multi': {
       const set = new Set(Array.isArray(value) ? value : []);
-      return `<fieldset class="field checks" data-checks="${f.id}"><legend>${esc(f.label)}</legend>${f.options.map(([k, l]) =>
-        `<label class="check"><input type="checkbox" value="${k}"${set.has(k) ? ' checked' : ''}> ${esc(l)}</label>`).join('')}</fieldset>`;
+      const boxes = f.options.map(([k, l]) => `<label class="check"><input type="checkbox" value="${esc(k)}"${set.has(k) ? ' checked' : ''}> ${esc(l)}</label>`).join('');
+      const other = f.other ? `<label class="check"><input type="checkbox" value="${OTHER}"${set.has(OTHER) ? ' checked' : ''}> Other</label>
+        <textarea class="other-input" data-id="${f.id}_other" rows="2" placeholder="${esc(f.otherHint || 'One per line')}"${set.has(OTHER) ? '' : ' hidden'}>${esc(data[f.id + '_other'] ?? '')}</textarea>` : '';
+      return `<fieldset class="field checks" data-multi="${f.id}"><legend>${esc(f.label)}${opt}</legend>${hint}${boxes}${other}</fieldset>`;
     }
     default:
       input = `<input type="text" id="${id}" data-id="${f.id}" value="${esc(value)}" autocomplete="off">`;
   }
-  return `<div class="field"><label for="${id}">${esc(f.label)}${opt}</label>${hint}${input}</div>`;
+  return `<div class="field"><label for="${id}">${esc(f.label)}${opt}</label>${hint}${input}${chips}</div>`;
 }
 
+// Wires every control inside `root` to write into `data`, then calls onChange.
+function bindFields(root, data, onChange) {
+  root.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.dataset.combo) {
+      const id = t.dataset.combo;
+      const other = t.parentElement.querySelector('.other-input');
+      if (t.value === OTHER) {
+        data[id + '__o'] = true;
+        data[id] = '';
+        other.value = '';
+        other.hidden = false;
+        other.focus();
+      } else {
+        data[id + '__o'] = false;
+        data[id] = t.value;
+        other.hidden = true;
+      }
+    } else if (t.dataset.id) {
+      data[t.dataset.id] = t.value;
+    } else {
+      const fs = t.closest('[data-multi]');
+      if (!fs) return;
+      const vals = [...fs.querySelectorAll('input[type=checkbox]:checked')].map((i) => i.value);
+      data[fs.dataset.multi] = vals;
+      const other = fs.querySelector('.other-input');
+      if (other) {
+        other.hidden = !vals.includes(OTHER);
+        if (t.value === OTHER && t.checked) other.focus();
+      }
+    }
+    onChange(t);
+  });
+  root.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-chip]');
+    if (!chip) return;
+    const ta = root.querySelector(`[data-id="${chip.dataset.chip}"]`);
+    const text = chip.dataset.text;
+    const sep = ta.tagName === 'TEXTAREA' && fieldIsList(chip.dataset.chip) ? '\n' : ' ';
+    if (!ta.value.includes(text)) ta.value = ta.value.trim() ? ta.value.replace(/\s+$/, '') + sep + text : text;
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+
+let currentListIds = new Set();
+const fieldIsList = (id) => currentListIds.has(id);
+
 function groupHTML(title, fields, data, open = true, extra = '') {
-  return `<details class="group"${open ? ' open' : ''}><summary>${esc(title)}</summary>${fields.map((f) => fieldHTML(f, data[f.id] ?? '')).join('')}${extra}</details>`;
+  return `<details class="group"${open ? ' open' : ''}><summary>${esc(title)}</summary>${fields.map((f) => fieldHTML(f, data)).join('')}${extra}</details>`;
 }
 
 async function showEditor(id) {
@@ -166,16 +230,9 @@ async function showEditor(id) {
   render();
 
   const formEl = $('.ed-form');
-  formEl.addEventListener('input', (e) => {
-    const t = e.target;
-    if (t.id === 'sig_guardian') doc.data.sig_guardian = t.checked;
-    else if (t.dataset.id) doc.data[t.dataset.id] = t.value;
-    else {
-      const fs = t.closest('[data-checks]');
-      if (fs) doc.data[fs.dataset.checks] = [...fs.querySelectorAll('input:checked')].map((i) => i.value);
-    }
-    save(); soon();
-  });
+  currentListIds = new Set(form.groups.flatMap((g) => g.fields).filter((f) => f.type === 'list').map((f) => f.id));
+  bindFields(formEl, doc.data, () => { save(); soon(); });
+  $('#sig_guardian').addEventListener('change', (e) => { doc.data.sig_guardian = e.target.checked; save(); soon(); });
   formEl.addEventListener('submit', (e) => e.preventDefault());
 
   document.querySelector('.tabs').onclick = (e) => {
@@ -248,13 +305,15 @@ async function showEditor(id) {
 
 async function showSettings() {
   const s = await store.getSettings();
+  const prov = {};
+  PROVIDER_FIELDS.forEach((f) => { prov[f.id] = s[f.id] ?? f.default ?? ''; });
   app.innerHTML = `
     <header class="bar"><a class="btn" href="#">Documents</a><h1>Settings</h1><span></span></header>
     <main class="home">
       <section class="card">
         <h2>Provider defaults</h2>
         <p class="muted small">Filled into each new document. You can still change them per document.</p>
-        <form id="prov" autocomplete="off">${PROVIDER_FIELDS.map((f) => fieldHTML(f, s[f.id] ?? f.default ?? '')).join('')}
+        <form id="prov" autocomplete="off">${PROVIDER_FIELDS.map((f) => fieldHTML(f, prov)).join('')}
           <button class="primary" type="submit">Save defaults</button> <span id="saved" class="muted small"></span></form>
       </section>
       <section class="card">
@@ -269,10 +328,11 @@ async function showSettings() {
       </section>
     </main>`;
 
+  bindFields($('#prov'), prov, () => { $('#saved').textContent = ''; });
   $('#prov').onsubmit = async (e) => {
     e.preventDefault();
     const next = { ...s };
-    PROVIDER_FIELDS.forEach((f) => { next[f.id] = $('#f_' + f.id).value.trim(); });
+    PROVIDER_FIELDS.forEach((f) => { next[f.id] = String(prov[f.id] ?? '').trim(); });
     await store.putSettings(next);
     $('#saved').textContent = 'Saved.';
   };

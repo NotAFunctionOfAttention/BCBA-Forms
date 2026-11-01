@@ -1,7 +1,28 @@
 // Turns a saved document (form answers + identifiers + wording edits) into a
 // document model that both the on-screen preview and the PDF render from.
 
-import { mark, hasMark, MARK_RE, lines, paras, fmtDate, esc } from './util.js';
+import { mark, hasMark, MARK_RE, lines, paras, fmtDate, esc, cap, joinList } from './util.js';
+
+// Identifiers shared by every document type. All optional except where the
+// form marks a date required: the clinician decides what goes on the record.
+export const DIAGNOSES = [
+  ['f840', 'F84.0 Autism spectrum disorder'],
+  ['f900', 'F90.0 ADHD, predominantly inattentive type'],
+  ['f901', 'F90.1 ADHD, predominantly hyperactive type'],
+  ['f902', 'F90.2 ADHD, combined type'],
+  ['f70', 'F70 Mild intellectual disabilities'],
+  ['f71', 'F71 Moderate intellectual disabilities'],
+  ['f88', 'F88 Other disorders of psychological development'],
+  ['f89', 'F89 Unspecified disorder of psychological development'],
+];
+
+export const SETTINGS = [
+  ['home', 'Home', 'home'],
+  ['clinic', 'Clinic', 'clinic'],
+  ['school', 'School', 'school'],
+  ['community', 'Community', 'community'],
+  ['tele', 'Telehealth', 'telehealth'],
+];
 
 // Identifiers shared by every document type. All optional except where the
 // form marks a date required: the clinician decides what goes on the record.
@@ -9,10 +30,10 @@ export const CLIENT_FIELDS = [
   { id: 'client_name', label: 'Client name' },
   { id: 'client_dob', label: 'Date of birth', type: 'date' },
   { id: 'client_id', label: 'Client ID / MRN' },
-  { id: 'diagnosis', label: 'Diagnosis (ICD-10)', hint: 'e.g. F84.0 Autism spectrum disorder' },
+  { id: 'diagnosis', label: 'Diagnosis (ICD-10)', type: 'multi', options: DIAGNOSES, other: true, otherHint: 'One per line, code first, e.g. F80.2 Mixed receptive-expressive language disorder' },
   { id: 'payer', label: 'Payer' },
   { id: 'member_id', label: 'Member ID' },
-  { id: 'setting', label: 'Service setting', hint: 'e.g. Home and clinic' },
+  { id: 'setting', label: 'Service setting', type: 'multi', options: SETTINGS, other: true },
 ];
 
 export const PROVIDER_FIELDS = [
@@ -21,9 +42,9 @@ export const PROVIDER_FIELDS = [
   { id: 'practice_phone', label: 'Practice phone' },
   { id: 'practice_npi', label: 'Practice NPI' },
   { id: 'author_name', label: 'Prepared by (name)' },
-  { id: 'author_cred', label: 'Prepared by (credential)', hint: 'e.g. RBT, BCaBA, BCBA' },
+  { id: 'author_cred', label: 'Prepared by (credential)', type: 'combo', options: [['RBT'], ['BCaBA'], ['BCBA'], ['BCBA-D']] },
   { id: 'sup_name', label: 'Supervising BCBA (name)' },
-  { id: 'sup_cred', label: 'Supervising BCBA (credential)', default: 'BCBA' },
+  { id: 'sup_cred', label: 'Supervising BCBA (credential)', type: 'combo', options: [['BCBA'], ['BCBA-D']], default: 'BCBA' },
   { id: 'sup_cert', label: 'BACB certification number' },
 ];
 
@@ -39,11 +60,21 @@ export function newDocData(form, settings) {
   Object.values(allFields(form)).forEach((f) => {
     if (f.default !== undefined) data[f.id] = f.default;
     if (f.type === 'select') data[f.id] = f.options[0][0];
+    if (f.type === 'combo' && f.default === undefined) data[f.id] = '';
   });
   PROVIDER_FIELDS.forEach((f) => { if (settings[f.id]) data[f.id] = settings[f.id]; });
+  data.diagnosis = ['f840'];
   data.doc_date = new Date().toISOString().slice(0, 10);
   data.sig_guardian = !!form.guardianSignature;
   return data;
+}
+
+// Values of a checkbox field as document phrases, plus any "Other" lines.
+export function multiValues(f, data) {
+  const set = new Set(Array.isArray(data[f.id]) ? data[f.id] : []);
+  const out = f.options.filter(([k]) => set.has(k)).map((o) => o[2] ?? o[1]);
+  if (f.other && set.has('__other')) out.push(...lines(data[f.id + '_other']));
+  return out;
 }
 
 function accessor(form, data) {
@@ -53,15 +84,17 @@ function accessor(form, data) {
     const r = data[id];
     return r === undefined || r === null ? '' : r;
   };
+  const filled = (id) => String(raw(id)).trim() !== '';
   return {
     raw,
     missing: (id) => mark(label(id)),
-    t: (id) => (String(raw(id)).trim() ? String(raw(id)) : mark(label(id))),
+    t: (id) => (filled(id) ? String(raw(id)) : mark(label(id))),
+    opt: (id) => (filled(id) ? String(raw(id)) : ''),
     list: (id) => { const l = lines(raw(id)); return l.length ? l : [mark(label(id))]; },
-    paras: (id) => { const p = paras(raw(id)); return p.length ? p : [mark(label(id))]; },
-    checks: (id, options) => {
-      const set = new Set(Array.isArray(raw(id)) ? raw(id) : []);
-      return options.filter(([k]) => set.has(k)).map(([, l]) => l);
+    paras: (id, { optional } = {}) => { const p = paras(raw(id)); return p.length || optional ? p : [mark(label(id))]; },
+    multi: (id, { optional } = {}) => {
+      const out = multiValues(fields[id], data);
+      return out.length || optional ? out : [mark(label(id))];
     },
   };
 }
@@ -89,11 +122,11 @@ export function buildModel(form, doc) {
     ['Client', d.client_name],
     ['Date of birth', fmtDate(d.client_dob)],
     ['Client ID / MRN', d.client_id],
-    ['Diagnosis', d.diagnosis],
+    ['Diagnosis', multiValues(CLIENT_FIELDS[3], d).join('; ')],
     ['Payer', d.payer],
     ['Member ID', d.member_id],
     ...form.dates.map((f) => [f.label, fmtDate(d[f.id])]),
-    ['Service setting', d.setting],
+    ['Service setting', cap(joinList(multiValues(CLIENT_FIELDS[6], d)))],
     ['Prepared by', person(d.author_name, d.author_cred)],
     ['Supervising BCBA', person(d.sup_name, d.sup_cred) + (d.sup_cert ? ` (BACB #${String(d.sup_cert).trim()})` : '')],
   ].filter(([, val]) => String(val || '').trim());

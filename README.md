@@ -12,6 +12,17 @@ An installable web app (PWA) that turns structured answers into audit-ready clin
 
 To add a document type, write a form file like `bip.js` (entry fields in `groups`, document text in `build`) and list it in `js/forms/index.js`.
 
+Answer types:
+
+| Type | Use |
+|---|---|
+| `select` | Closed list where every option is given (e.g. safety) |
+| `combo` | Dropdown of common answers plus **Other**, which opens a text box |
+| `multi` | Checkboxes; with `other: true`, an **Other** box opens a text box (one item per line) |
+| `text`, `textarea`, `list` | Open answers. `suggest` adds tap-to-insert phrases that you can then edit |
+
+Each option carries the exact phrase that goes into the document, so picking an option never produces awkward wording.
+
 ## Using it
 
 1. **Settings → Provider defaults**: practice, author and supervising BCBA details, filled into every new document.
