@@ -10,7 +10,6 @@ export const TARGETS = [
   ['Property destruction', 'property destruction'],
   ['Tantrum behavior', 'tantrum behavior'],
   ['Disruptive behavior', 'disruptive behavior'],
-  ['Noncompliance', 'noncompliance'],
   ['Verbal aggression', 'verbal aggression'],
   ['Pica', 'pica'],
   ['Motor stereotypy', 'motor stereotypy'],
@@ -122,15 +121,23 @@ export const GOAL_AREAS = [
   ['Caregiver training', 'Caregiver training'],
 ];
 
-// Services in a recommendation or authorization. Codes are left to the
-// clinician: they differ by payer and change over time.
+// Services in a recommendation or authorization, following the categories of
+// the adaptive behavior CPT code set that takes effect January 1, 2027 (the
+// BCBA directing the technician and the BCBA treating the client directly are
+// separate services). Codes are left to the clinician: they differ by payer
+// and change over time.
 export const SERVICES = [
   ['Direct treatment by a behavior technician', 'Direct treatment by a behavior technician'],
-  ['Protocol modification and supervision by the BCBA', 'Protocol modification and supervision by the BCBA'],
+  ['Technician treatment of harmful behavior', 'Technician treatment of harmful behavior'],
+  ['BCBA directing the technician (protocol modification)', 'BCBA directing the technician (protocol modification)'],
+  ['Treatment delivered directly by the BCBA', 'Treatment delivered directly by the BCBA'],
+  ['BCBA non-face-to-face work (data analysis, protocol revision)', 'BCBA non-face-to-face work (data analysis, protocol revision)'],
   ['Caregiver training', 'Caregiver training'],
   ['Group treatment', 'Group treatment'],
   ['Assessment or reassessment', 'Assessment or reassessment'],
   ['Other', 'Other'],
+  // Kept so documents written before the 2027 split still show their entry.
+  ['Protocol modification and supervision by the BCBA', 'Protocol modification and supervision by the BCBA (before 2027)'],
 ];
 
 // ---------- Printable data sheets ----------

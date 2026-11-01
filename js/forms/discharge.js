@@ -131,6 +131,7 @@ export default {
         },
         { id: 'dc_shared', label: 'Shared with the receiving setting, with written consent', type: 'multi', optional: true, other: true, options: [['summary', 'This discharge summary', 'this discharge summary'], ['procedures', 'Summary of effective procedures', 'a summary of effective procedures'], ['data', 'Recent data', 'recent data'], ['training', 'Brief training for receiving staff', 'brief training for receiving staff on the procedures that are working']] },
         { id: 'dc_release_date', label: 'Date consent to share was obtained', type: 'date', optional: true },
+        { id: 'dc_plan_date', label: 'Date the written plan for ending services was given to the family', type: 'date', hint: 'Required by Ethics Code 3.15.' },
       ],
     },
     {
@@ -180,6 +181,7 @@ export default {
         blocks: [
           { type: 'p', key: 'recv', text: `${cap(c.client)} is transitioning to ${frag(v.t('dc_receiving'))}.` },
           ...(steps.length ? [{ type: 'table', widths: ['*', 55, 95, 120], head: ['Stage', 'Hours/week', 'Dates', 'Move on when'], rows: steps.map((r) => [r.stage, String(r.hours ?? ''), r.dates || '', r.criterion || '']) }] : []),
+          { type: 'p', key: 'dcplan', text: v.raw('dc_plan_date') ? `A written plan for ending services was given to the family on ${fmtDate(v.raw('dc_plan_date'))}.` : mark('Date the written plan for ending services was given to the family') },
           { type: 'p', key: 'shared', text: shared.length ? `With written consent${rel ? ` obtained on ${fmtDate(rel)}` : ''}, the following were shared with the receiving setting: ${joinList(shared)}.` : 'No records have been shared with a receiving setting.' },
         ],
       },

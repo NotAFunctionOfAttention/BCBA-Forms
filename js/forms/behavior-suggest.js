@@ -123,23 +123,6 @@ const BEHAVIORS = {
       'Standing up when instructed to',
     ],
   },
-  noncompliance: {
-    def: [
-      'failing to begin a response to an instruction within 5 seconds, or failing to complete it within the expected time',
-    ],
-    onset: ['5 seconds pass after an instruction without the client beginning the response'],
-    offset: ['The client begins the instructed response', 'The instruction is completed or withdrawn'],
-    ex: [
-      'Continuing to play after being told to clean up',
-      'Turning away when asked to come to the table',
-      'Starting a task but stopping before it is finished',
-    ],
-    nonex: [
-      'Beginning the instructed task within 5 seconds',
-      'Asking for help or a break when an instruction is given',
-      'Not responding to an instruction the client did not hear',
-    ],
-  },
   'verbal aggression': {
     def: [
       'threats, insults, swearing, or yelling directed at another person',
@@ -313,7 +296,7 @@ const DESIRED = {
     'gain attention appropriately by tapping a shoulder or saying the person’s name',
   ],
   tangible: [
-    'wait for preferred items or activities for up to 5 minutes',
+    'wait up to 5 minutes for preferred items or activities while engaging with another activity',
     'transition away from preferred activities after a 2-minute warning',
     'share and take turns with preferred items',
   ],

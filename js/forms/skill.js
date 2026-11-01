@@ -36,7 +36,7 @@ export const PROGRAMS = {
     sd: ['Say "Do this" while modeling the action'],
     materials: ['Objects needed for object imitation targets'],
     targets: ['clap hands', 'touch head', 'wave', 'stomp feet', 'raise arms', 'push car'],
-    prereq: ['Attends to the instructor for at least 3 seconds', 'Sits or stands near the instructor'],
+    prereq: ['Attends to the instructor for at least 3 seconds', 'Comes to the instructor when called'],
   },
   'echoics': {
     label: 'Echoics (vocal imitation)',
@@ -84,15 +84,15 @@ export const PROGRAMS = {
     sd: ['Say "Brush your teeth" at the bathroom sink'],
     materials: ['Toothbrush, toothpaste, and cup', 'Visual task analysis'],
     targets: ['Pick up toothbrush', 'Put toothpaste on brush', 'Brush top teeth', 'Brush bottom teeth', 'Spit', 'Rinse brush', 'Put toothbrush away'],
-    prereq: ['Tolerates the toothbrush in the mouth', 'Imitates simple motor actions'],
+    prereq: ['Opens mouth when the toothbrush is presented and brushes with help for 10 seconds', 'Imitates simple motor actions'],
   },
   'waiting for preferred items': {
     label: 'Waiting for preferred items',
-    def: ['waits without problem behavior for the target duration after being told "Wait," then receives the item'],
+    def: ['responds to "Wait" by engaging with another activity until the target time ends, then requests the item again'],
     sd: ['Hold up the requested item and say "Wait"'],
     materials: ['Preferred items', 'Visual timer'],
     targets: ['5 seconds', '15 seconds', '30 seconds', '1 minute', '2 minutes', '5 minutes'],
-    prereq: ['Requests preferred items', 'Tolerates brief delays of a few seconds'],
+    prereq: ['Requests preferred items', 'Engages with another activity during brief delays of a few seconds'],
   },
 };
 const PROGRAM_COMBO = Object.entries(PROGRAMS).map(([k, p]) => [p.label, k]);
@@ -194,7 +194,7 @@ export default {
             'This skill will increase independence in daily routines.',
           ],
         },
-        { id: 'sk_prereq', label: 'Prerequisite skills', type: 'list', hint: 'One per line.', suggest: (d) => [...(prog(d)?.prereq || []), 'Sits at a table for at least 2 minutes', 'Responds to own name'] },
+        { id: 'sk_prereq', label: 'Prerequisite skills', type: 'list', hint: 'One per line.', suggest: (d) => [...(prog(d)?.prereq || []), 'Sits at a table and engages with an activity for at least 2 minutes', 'Responds to own name'] },
         { id: 'sk_def', label: 'Correct response', type: 'textarea', hint: 'Completes "A correct response is recorded when the client…".', suggest: (d) => prog(d)?.def || [], suggestMode: 'replace', suggestEmpty: 'Choose a program above to see suggestions.' },
       ],
     },

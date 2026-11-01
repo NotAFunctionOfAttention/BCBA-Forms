@@ -81,7 +81,7 @@ const RECS = {
     'Provide noncontingent attention on a fixed-time schedule.',
   ],
   tangible: [
-    'Teach the client to request preferred items and to tolerate waiting.',
+    'Teach the client to request preferred items, and to wait for them by engaging with another activity.',
     'Provide advance warnings and visual timers before preferred activities end.',
   ],
   automatic: [
@@ -161,7 +161,7 @@ export default {
     {
       title: 'Target behavior',
       fields: [
-        { id: 'tb_name', label: 'Target behavior', type: 'combo', options: TARGETS },
+        { id: 'tb_name', label: 'Target behavior', type: 'combo', options: TARGETS, hint: 'Something the person does: if a dead man could do it (not hitting, not following an instruction), it isn’t behavior.' },
         { id: 'tb_def', label: 'Operational definition', type: 'textarea', hint: 'Completes "…is defined as".', suggest: B.definition, suggestMode: 'replace', suggestEmpty: 'Choose a target behavior above to see suggestions.' },
         { id: 'tb_onset', label: 'Onset', suggest: B.onset, suggestMode: 'replace' },
         { id: 'tb_offset', label: 'Offset', suggest: B.offset, suggestMode: 'replace' },

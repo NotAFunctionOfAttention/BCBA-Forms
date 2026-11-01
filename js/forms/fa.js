@@ -124,7 +124,7 @@ export default {
     {
       title: 'Target behavior',
       fields: [
-        { id: 'tb_name', label: 'Target behavior', type: 'combo', options: TARGETS },
+        { id: 'tb_name', label: 'Target behavior', type: 'combo', options: TARGETS, hint: 'Something the person does: if a dead man could do it (not hitting, not following an instruction), it isn’t behavior.' },
         { id: 'tb_def', label: 'Operational definition', type: 'textarea', hint: 'Completes "…is defined as".', suggest: B.definition, suggestMode: 'replace', suggestEmpty: 'Choose a target behavior above to see suggestions.' },
         { id: 'fa_precursor', label: 'Precursor targeted instead', optional: true, hint: 'Optional. If a less dangerous behavior that reliably comes first was targeted, describe it. e.g. raising a hand toward another person' },
       ],
@@ -145,7 +145,7 @@ export default {
           suggest: [
             'Any injury to the client or staff',
             'Any scratch that breaks the skin',
-            'Five consecutive minutes of crying',
+            'Crying for 2 consecutive minutes',
             'Three high-intensity responses in one session',
             'Signs of distress beyond the agreed level',
           ],
@@ -178,12 +178,12 @@ export default {
         },
         { id: 'fa_setting', label: 'Setting', hint: 'e.g. a clinic session room' },
         { id: 'fa_measure', label: 'Measure', type: 'combo', options: [['Responses per session', 'responses per session'], ['Responses per minute', 'responses per minute'], ['Latency to first response', 'latency to the first response, in seconds'], ['Percentage of intervals', 'percentage of intervals']] },
-        { id: 'fa_session_len', label: 'Session length', type: 'combo', options: [['5 minutes', '5 minutes'], ['10 minutes', '10 minutes'], ['15 minutes', '15 minutes'], ['Until first response (latency)', 'until the first response or a set maximum']] },
+        { id: 'fa_session_len', label: 'Session length', type: 'combo', hint: 'Often 10 to 15 minutes; 10 is most common.', options: [['10 minutes', '10 minutes'], ['15 minutes', '15 minutes'], ['5 minutes', '5 minutes'], ['Until first response (latency)', 'until the first response or a set maximum']] },
         { id: 'fa_reinf', label: 'Reinforcer access after problem behavior', type: 'combo', options: [['20 seconds', '20 seconds'], ['30 seconds', '30 seconds'], ['60 seconds', '60 seconds']] },
         { id: 'fa_order', label: 'Order of conditions', type: 'combo', options: [['Rotating', 'a rotating order'], ['Random', 'a random order'], ['Fixed sequence', 'a fixed sequence']] },
         {
           id: 'fa_conditions', label: 'Conditions', type: 'grid', layout: 'cards', rowName: 'condition',
-          hint: 'Choosing a condition fills in its standard description; tailor it to this client (actual preferred items, actual difficult tasks). Enter each session’s result in order to draw the graph.',
+          hint: 'Choosing a condition fills in its standard description; tailor it to this client (actual preferred items, actual difficult tasks). Add a tangible condition only when interviews or observation suggest items maintain the behavior; including it by default risks a false positive (Hanley, Iwata & McCord, 2003). Enter each session’s result in order to draw the graph.',
           columns: [
             { id: 'cond', label: 'Condition', type: 'select', options: [['', 'Choose…'], ...CONDITIONS.map((c) => [c[0], c[1]])], fills: { col: 'desc', values: Object.fromEntries(CONDITIONS.filter((c) => c[2]).map((c) => [c[0], c[2]])) } },
             { id: 'name', label: 'Name (for Other)', optional: true },
@@ -216,7 +216,8 @@ export default {
             const name = frag(d.tb_name || 'problem behavior');
             const short = (r) => r.label.replace(/\s*\(.*\)/, '').toLowerCase();
             const ctl = a.control.length ? `the ${a.control.map(short).join(' and ')} condition` : 'the other conditions';
-            const fn = (r) => FN_PHRASE[COND_FN[r.key]] || (r.key === 'synth_test' ? 'the combination of reinforcers tested in the synthesized condition' : `the contingency in the ${r.label.toLowerCase()} condition`);
+            // In the tangible condition the item is removed and returned after behavior, so the reinforcer is regaining access.
+            const fn = (r) => (r.key === 'tangible' ? 'regaining access to preferred items or activities' : FN_PHRASE[COND_FN[r.key]]) || (r.key === 'synth_test' ? 'the combination of reinforcers tested in the synthesized condition' : `the contingency in the ${r.label.toLowerCase()} condition`);
             switch (a.pattern) {
               case 'single': return [`Responding was clearly differentiated. ${cap(name)} was elevated in the ${short(a.elevated[0])} condition relative to ${ctl}, indicating that it is maintained by ${fn(a.elevated[0])}.`];
               case 'multiple': return [`Responding was elevated in more than one test condition (${joinList(a.elevated.map(short))}) relative to ${ctl}, indicating that ${name} is maintained by multiple functions: ${joinList(a.elevated.map(fn))}. Treatment will need to address each.`];
@@ -235,7 +236,7 @@ export default {
             const out = [];
             if (f.has('escape')) out.push('Teach a break or help request using functional communication training (FCT)', 'Reduce the aversiveness of demands with demand fading and choice');
             if (f.has('attention')) out.push('Teach an appropriate way to request attention', 'Provide noncontingent attention on a fixed-time schedule');
-            if (f.has('tangible')) out.push('Teach the client to request preferred items and to tolerate waiting', 'Use advance warnings and visual timers before preferred activities end');
+            if (f.has('tangible')) out.push('Teach the client to request preferred items, and to wait for them by engaging with another activity', 'Use advance warnings and visual timers before preferred activities end');
             if (f.has('automatic')) out.push('Provide alternative items that produce similar sensory stimulation', 'Enrich the environment during unstructured time');
             out.push('Develop a function-based behavior intervention plan based on these results');
             return out;

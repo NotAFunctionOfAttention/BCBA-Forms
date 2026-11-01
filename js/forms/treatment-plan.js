@@ -273,7 +273,7 @@ export default {
           ],
         },
         {
-          id: 'tp_discharge', label: 'Discharge criteria', type: 'list', hint: 'What would show services are no longer needed, or should change. One per line.',
+          id: 'tp_discharge', label: 'Discharge criteria', type: 'list', hint: 'What would show services are no longer needed, or should change. One per line. These belong in the service agreement as well as this plan.',
           suggest: [
             'Treatment goals are met and skills are maintained at home and in the community',
             'Problem behavior is reduced to levels that no longer limit access to typical settings',
@@ -282,6 +282,7 @@ export default {
             'Insufficient progress after reasonable modifications, at which point referral to other services will be considered',
           ],
         },
+        { id: 'tp_dc_agreement', label: 'Discharge criteria in the service agreement', type: 'select', options: [['yes', 'Also written into the service agreement'], ['no', 'Not yet in the service agreement']] },
       ],
     },
   ],
@@ -367,7 +368,7 @@ export default {
       {
         heading: 'Discharge Criteria',
         blocks: [
-          { type: 'p', key: 'dc', text: 'Services will be reviewed for discharge or transition when any of the following occur:' },
+          { type: 'p', key: 'dc', text: `Services will be reviewed for discharge or transition when any of the following occur${v.raw('tp_dc_agreement') === 'no' ? '' : '. These criteria are also written into the service agreement'}:` },
           { type: 'ul', items: v.list('tp_discharge').map(fin) },
         ],
       },

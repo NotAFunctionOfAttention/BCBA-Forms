@@ -92,9 +92,12 @@ const CRITERIA = [
 const ETHICS = [
   ['consent', 'Written guardian consent obtained', 'Written informed consent for this plan was obtained from the legal guardian before implementation.'],
   ['assent', 'Assent is monitored', 'Client assent is monitored throughout sessions, and procedures will be paused and reviewed if assent is withdrawn.'],
-  ['least', 'Least restrictive procedures selected', 'The least restrictive effective procedures were selected, and less intrusive alternatives were considered first.'],
-  ['norestrict', 'No restrictive procedures', 'This plan does not include restrictive procedures.'],
-  ['restrict', 'Includes restrictive procedures (approved)', 'This plan includes restrictive procedures, which are described above and were reviewed and approved before implementation.'],
+  // Worded after Ethics Code 2.14 and 2.15, which speak of prioritizing positive
+  // reinforcement and set two conditions for restrictive procedures.
+  ['least', 'Positive reinforcement prioritized (2.14)', 'Procedures that rely on positive reinforcement were prioritized, and less intrusive alternatives were selected over more restrictive ones (Ethics Code 2.14).'],
+  ['norestrict', 'No restrictive procedures', 'This plan does not include restrictive or punishment-based procedures.'],
+  ['restrict', 'Restrictive procedures: less intrusive means failed (2.15)', 'This plan includes restrictive or punishment-based procedures, described above, because less intrusive procedures were implemented and were not effective. They were reviewed and approved before implementation (Ethics Code 2.15).'],
+  ['restrict_risk', 'Restrictive procedures: risk of harm outweighs (2.15)', 'This plan includes restrictive or punishment-based procedures, described above, because the risk of harm from the behavior outweighs the risk of the procedures. They were reviewed and approved before implementation (Ethics Code 2.15).'],
   ['review', 'Plan revised if no progress', 'The plan will be reviewed and revised if data do not show improvement by the scheduled review date or if new risks are identified.'],
   ['dignity', 'Dignity and family values respected', 'Procedures were selected with attention to the client’s dignity, preferences, and cultural and family values.'],
 ];
@@ -153,7 +156,7 @@ export default {
     {
       title: 'Target behavior',
       fields: [
-        { id: 'tb_name', label: 'Target behavior', type: 'combo', options: TARGETS, hint: 'One behavior per plan.' },
+        { id: 'tb_name', label: 'Target behavior', type: 'combo', options: TARGETS, hint: 'One behavior per plan. Something the person does: if a dead man could do it (not hitting, not following an instruction), it isn’t behavior.' },
         { id: 'tb_def', label: 'Operational definition', type: 'textarea', hint: 'Completes "…is defined as". Tap a suggestion to use it, then edit it to fit.', suggest: S.definition, suggestMode: 'replace', suggestEmpty: 'Choose a target behavior above to see suggestions.' },
         { id: 'tb_onset', label: 'Onset', suggest: S.onset, suggestMode: 'replace', suggestEmpty: 'Choose a target behavior above to see suggestions.' },
         { id: 'tb_offset', label: 'Offset', suggest: S.offset, suggestMode: 'replace', suggestEmpty: 'Choose a target behavior above to see suggestions.' },
