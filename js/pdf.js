@@ -28,7 +28,7 @@ function block(b) {
     case 'image':
       return { stack: [{ image: b.src, fit: [504, 300], alignment: 'center' }, b.caption ? { text: b.caption, style: 'caption' } : ''], margin: [0, 2, 0, 8], unbreakable: true };
     case 'ul': return { ul: b.items, style: 'list' };
-    case 'ol': return { ol: b.items, style: 'list' };
+    case 'ol': return { ol: b.items, style: 'list', ...(b.start ? { start: b.start } : {}) };
     case 'dl':
       return {
         table: { widths: [b.wide ? 125 : 70, '*'], body: b.rows.map(([k, v]) => [{ text: k, bold: true }, v]) },

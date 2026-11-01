@@ -13,6 +13,8 @@ An installable web app (PWA) that turns structured answers into audit-ready clin
 | Preference Assessment | `js/forms/preference.js` |
 | Skill Acquisition Program | `js/forms/skill.js` |
 | Visual Analysis and Phase Change Decision | `js/forms/visual.js` |
+| Treatment Plan | `js/forms/treatment-plan.js` |
+| Progress Report | `js/forms/progress-report.js` |
 
 To add a document type, write a form file like `bip.js` (entry fields in `groups`, document text in `build`) and list it in `js/forms/index.js`.
 
@@ -23,7 +25,7 @@ Answer types:
 | `select` | Closed list where every option is given (e.g. safety) |
 | `combo` | Dropdown of common answers plus **Other**, which opens a text box |
 | `multi` | Checkboxes; with `other: true`, an **Other** box opens a text box (one item per line) |
-| `grid` | Editable table with computed columns (preference results) |
+| `grid` | Editable table with computed columns and totals; `layout: 'cards'` for long entries such as goals, with optional image columns for graphs |
 | `image` | Photo or screenshot, resized on the device and printed in the report (graphs) |
 | `text`, `textarea`, `list` | Open answers. `suggest` adds tap-to-insert phrases that you can then edit |
 
@@ -54,8 +56,15 @@ Home → **Open it here** imports a PDF as a document on this device.
 | Preference Assessment | Skill Acquisition Program | Highest-preference items as reinforcers |
 | Preference Assessment | BIP | Highest-preference items as reinforcers for the replacement behavior |
 | Skill Acquisition Program | Visual Analysis | Program and measure, teaching phase, mastery criterion as the review target |
+| FBA | Treatment Plan | Hypothesis statement, referral question, assessments used |
+| Preference Assessment (several) | Treatment Plan | Preferred items and assessment dates |
+| BIP | Treatment Plan | BIP summary, crisis plan status, the BIP's goals |
+| Skill Acquisition Program (several) | Treatment Plan | One goal per program, with baseline and mastery criterion |
+| Treatment Plan | Progress Report | Goals and baselines, services, coordination of care |
+| Visual Analysis (several) | Progress Report | Current level, status and interpretation, matched to the goal by program or behavior name |
+| Progress Report | Treatment Plan (revised) | Goals still in progress with current levels as new baselines, new goals, service recommendation |
 
-Links are defined in each source form's `next` list (`multiple: true` lets several sources feed one document; a target field marked `combine` merges values from different kinds of source). The logic lives in `js/links.js`.
+Links are defined in each source form's `next` list or the target form's `from` list (`multiple: true` lets several sources feed one document; a target field marked `combine` merges values from different kinds of source: `and`, `paragraphs`, `union`, or `rows` for tables, where each row is tracked on its own; a form's `combineSources` can match sources to each other, as the progress report does with visual analyses). The logic lives in `js/links.js`.
 
 ## Using it
 

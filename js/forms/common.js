@@ -110,3 +110,25 @@ export const COLLECTORS = [
   ['cg', 'Caregiver', 'the caregiver'],
   ['school', 'School staff', 'school staff'],
 ];
+
+// In priority order (safety and problem behavior first, Chapter 9).
+export const GOAL_AREAS = [
+  ['Behavior reduction', 'Behavior reduction'],
+  ['Communication', 'Communication'],
+  ['Social', 'Social'],
+  ['Learning readiness', 'Learning readiness'],
+  ['Adaptive / daily living', 'Adaptive / daily living'],
+  ['Play and leisure', 'Play and leisure'],
+  ['Caregiver training', 'Caregiver training'],
+];
+
+// Services in a recommendation or authorization. Codes are left to the
+// clinician: they differ by payer and change over time.
+export const SERVICES = [
+  ['Direct treatment by a behavior technician', 'Direct treatment by a behavior technician'],
+  ['Protocol modification and supervision by the BCBA', 'Protocol modification and supervision by the BCBA'],
+  ['Caregiver training', 'Caregiver training'],
+  ['Group treatment', 'Group treatment'],
+  ['Assessment or reassessment', 'Assessment or reassessment'],
+  ['Other', 'Other'],
+];

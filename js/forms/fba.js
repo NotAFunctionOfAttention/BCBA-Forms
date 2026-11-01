@@ -102,6 +102,7 @@ export default {
     { id: 'assess_end', label: 'Assessment end date' },
   ],
   guardianSignature: false,
+  period: { start: 'assess_start', end: 'assess_end', label: 'Assessment period' },
 
   // Documents this one can start. See startFrom() in js/engine.js.
   next: [

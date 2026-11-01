@@ -126,7 +126,9 @@ export function buildModel(form, doc) {
     ['Diagnosis', multiValues(CLIENT_FIELDS[3], d).join('; ')],
     ['Payer', d.payer],
     ['Member ID', d.member_id],
-    ...form.dates.map((f) => [f.label, fmtDate(d[f.id])]),
+    // A start and end date can share one row ("Reporting period: 11/01/2026 to 04/30/2027").
+    ...form.dates.filter((f) => !form.period || ![form.period.start, form.period.end].includes(f.id)).map((f) => [f.label, fmtDate(d[f.id])]),
+    ...(form.period ? [[form.period.label, [d[form.period.start], d[form.period.end]].filter(Boolean).map(fmtDate).join(' to ')]] : []),
     ['Service setting', cap(joinList(multiValues(CLIENT_FIELDS[6], d)))],
     ['Based on', (doc.sources || []).map((s) => `${s.title}${s.date ? ' dated ' + fmtDate(s.date) : ''}`).join('; ')],
     ['Prepared by', person(d.author_name, d.author_cred)],
@@ -200,7 +202,7 @@ export function modelToHTML(m) {
       } else if (b.type === 'sub') {
         out.push(`<h3>${esc(b.text)}</h3>`);
       } else if (b.type === 'ul' || b.type === 'ol') {
-        out.push(`<${b.type}>${b.items.map((i) => `<li>${hl(i)}</li>`).join('')}</${b.type}>`);
+        out.push(`<${b.type}${b.start ? ` start="${b.start}"` : ''}>${b.items.map((i) => `<li>${hl(i)}</li>`).join('')}</${b.type}>`);
       } else if (b.type === 'dl') {
         out.push(`<table class="pv-dl${b.wide ? ' wide' : ''}">${b.rows.map(([k, val]) => `<tr><th>${esc(k)}</th><td>${hl(val)}</td></tr>`).join('')}</table>`);
       } else if (b.type === 'table') {

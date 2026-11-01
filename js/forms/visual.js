@@ -18,7 +18,7 @@ function slope(a) {
   return num / den;
 }
 
-function stats(d) {
+export function stats(d) {
   const prev = nums(d.va_prev_vals), cur = nums(d.va_cur_vals);
   if (prev.length < 2 || cur.length < 2) return null;
   const unit = String(d.va_unit ?? '%');

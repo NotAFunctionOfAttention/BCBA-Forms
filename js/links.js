@@ -12,12 +12,24 @@ import { CLIENT_FIELDS, PROVIDER_FIELDS, newDocData, allFields } from './engine.
 import { uid, joinList } from './util.js';
 
 // Every link, as { from, to, multiple, label, carries, map }.
-export const LINKS = FORMS.flatMap((f) => (f.next || []).map((l) => ({ ...l, from: f.id })));
+// A link can also be declared on the target form as `from: [{ from, ... }]`.
+export const LINKS = [
+  ...FORMS.flatMap((f) => (f.next || []).map((l) => ({ ...l, from: f.id }))),
+  ...FORMS.flatMap((f) => (f.from || []).map((l) => ({ ...l, to: f.id }))),
+];
 export const linksInto = (formId) => LINKS.filter((l) => l.to === formId);
 export const linksFrom = (formId) => LINKS.filter((l) => l.from === formId);
 
-const blank = (v) => v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
+const blankRow = (r) => !r || typeof r !== 'object' || Object.entries(r).every(([k, v]) => k.startsWith('_') || v === '' || v === undefined || v === null);
+// Blank: nothing entered. A table counts as blank when every row is empty.
+const blank = (v) => v === undefined || v === null || v === '' || (Array.isArray(v) && v.every((x) => (x && typeof x === 'object' ? blankRow(x) : false)));
+const rowKey = (r) => JSON.stringify(Object.fromEntries(Object.entries(r).filter(([k]) => k !== '_auto')));
 const same = (a, b) => JSON.stringify(a ?? '') === JSON.stringify(b ?? '');
+
+const stripImages = (v) => (typeof v === 'string' && v.startsWith('data:image') ? ''
+  : Array.isArray(v) ? v.map(stripImages)
+  : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, stripImages(x)]))
+  : v);
 
 // Answers worth carrying in a snapshot or a PDF: everything except images.
 function portableData(form, data) {
@@ -26,7 +38,7 @@ function portableData(form, data) {
   for (const [k, v] of Object.entries(data || {})) {
     const f = fields[k.replace(/(_other|__o)$/, '')];
     if (f && f.type === 'image') continue;
-    out[k] = v;
+    out[k] = stripImages(v);
   }
   return out;
 }
@@ -71,12 +83,60 @@ function proposed(targetForm, sources) {
     }
   }
   for (const [k, vals] of Object.entries(parts)) {
+    if (fields[k].combine === 'union') { out[k] = [...new Set(vals)]; continue; }
+    if (fields[k].combine === 'rows') {
+      // Table rows from every source, each tagged so it can be tracked on its own.
+      out[k] = vals.filter((r) => !blankRow(r)).map((r, n) => ({ ...r, _auto: `${k}:${n}` }));
+      continue;
+    }
     const uniq = [...new Set(vals)];
     if (fields[k].combine !== 'and') out[k] = uniq.join('\n\n');
     else if (uniq.some((x) => x.includes(','))) out[k] = uniq.length > 1 ? uniq.slice(0, -1).join('; ') + '; and ' + uniq[uniq.length - 1] : uniq[0];
     else out[k] = joinList(uniq);
   }
+  // A form can combine sources of different kinds itself (e.g. matching a
+  // visual analysis to the treatment-plan goal it reviews).
+  if (targetForm.combineSources) targetForm.combineSources(out, sources);
   return out;
+}
+
+// Rows a source added stay linked to it; rows you typed, or source rows you
+// edited, are yours and are never removed by a link.
+function applyRows(doc, k, nextRows, prevRows, result) {
+  const cur = Array.isArray(doc.data[k]) ? doc.data[k] : [];
+  const prevByTag = new Map((prevRows || []).map((r) => [r._auto, rowKey(r)]));
+  const nextByTag = new Map((nextRows || []).map((r) => [r._auto, r]));
+  const out = [];
+  const placed = new Set();
+  // Walk the rows in their current order so nothing moves: a source's row is
+  // refreshed in place (or dropped if its source is gone); your rows stay put.
+  for (const r of cur) {
+    if (blankRow(r)) continue;
+    if (r._auto && prevByTag.get(r._auto) === rowKey(r)) {
+      const fresh = nextByTag.get(r._auto);
+      if (fresh) { out.push(structuredClone(fresh)); placed.add(r._auto); } else result.cleared++;
+      continue;
+    }
+    if (r._auto) {
+      // A source's row that you edited is now yours.
+      placed.add(r._auto);
+      const { _auto, ...mine } = r;
+      out.push(mine);
+      result.kept++;
+      continue;
+    }
+    out.push(r);
+  }
+  const before = new Set((prevRows || []).map(rowKey));
+  const used = [];
+  for (const r of nextRows || []) {
+    if (placed.has(r._auto)) { if (out.some((x) => x._auto === r._auto)) used.push(r); continue; }
+    out.push(structuredClone(r));
+    used.push(r);
+  }
+  result.filled += used.filter((r) => !before.has(rowKey(r))).length;
+  doc.data[k] = out;
+  return used;
 }
 
 // Re-applies all sources to the document. Returns what happened, for a message.
@@ -89,7 +149,13 @@ export function applySources(targetForm, doc) {
   const result = { filled: 0, kept: 0, cleared: 0 };
   const keys = new Set([...Object.keys(next), ...Object.keys(auto)]);
   const newAuto = {};
+  const fields = allFields(targetForm);
   for (const k of keys) {
+    if (fields[k] && fields[k].combine === 'rows') {
+      const used = applyRows(doc, k, next[k], auto[k], result);
+      if (used.length) newAuto[k] = structuredClone(used);
+      continue;
+    }
     const cur = doc.data[k];
     const ours = k in auto && same(cur, auto[k]); // still what a source put there
     const untouched = blank(cur) || (k !== 'doc_date' && same(cur, defaults[k])); // never answered

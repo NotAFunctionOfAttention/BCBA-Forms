@@ -5,7 +5,7 @@ import { cap, frag, fin, joinList } from '../util.js';
 import { FADING, SCHEDULES, THINNING, COLLECTORS } from './common.js';
 
 // Common programs, with starting wording for the fields that depend on them.
-const PROGRAMS = {
+export const PROGRAMS = {
   'tacting common items': {
     label: 'Tacting common items',
     def: ['says the name of the item within 3 seconds of the instruction, without a prompt'],

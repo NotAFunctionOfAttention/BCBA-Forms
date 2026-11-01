@@ -4,7 +4,7 @@ import { CLIENT_FIELDS, PROVIDER_FIELDS, newDocData, buildModel, modelToHTML, al
 import { LINKS, linksInto, linksFrom, addSource, removeSource, startFrom, upgrade, pdfPayload, readPdf } from './links.js';
 import { makePdfBlob } from './pdf.js';
 import { encryptJSON, decryptJSON } from './crypto.js';
-import { esc, uid, fmtDate } from './util.js';
+import { esc, uid, fmtDate, cap } from './util.js';
 
 const app = document.getElementById('app');
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -229,20 +229,37 @@ function fieldHTML(f, data) {
 }
 
 // Editable table: one object per row. Columns may be computed (`calc`).
+// `layout: 'cards'` shows each row as a card with stacked, labelled answers
+// (for long text such as goals); `footer(rows)` adds a line such as a total.
+function gridCell(f, c, r, i, rows) {
+  if (c.calc) return `<span class="calc" data-calc="${f.id}:${i}:${c.id}">${esc(c.calc(r, rows))}</span>`;
+  const v = r[c.id] ?? '';
+  const at = `data-grid="${f.id}" data-row="${i}" data-col="${c.id}"`;
+  switch (c.type) {
+    case 'select': return `<select ${at}>${c.options.map(([k, l]) => `<option value="${esc(k)}"${k === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+    case 'number': return `<input type="number" inputmode="decimal" min="0" step="any" ${at} value="${esc(v)}">`;
+    case 'textarea': return `<textarea rows="${c.rows || 2}" ${at}${c.placeholder ? ` placeholder="${esc(c.placeholder)}"` : ''}>${esc(v)}</textarea>`;
+    case 'image': return v
+      ? `<img src="${esc(v)}" alt=""><button type="button" class="link danger-text" data-grid-imgdel="${f.id}" data-row="${i}" data-col="${c.id}">Remove image</button>`
+      : `<input type="file" accept="image/*" data-grid-img="${f.id}" data-row="${i}" data-col="${c.id}">`;
+    default: return `<input type="text" ${at} value="${esc(v)}" autocomplete="off"${c.placeholder ? ` placeholder="${esc(c.placeholder)}"` : ''}>`;
+  }
+}
+
 function gridHTML(f, data) {
   const rows = Array.isArray(data[f.id]) && data[f.id].length ? data[f.id] : [{}];
   if (!Array.isArray(data[f.id]) || !data[f.id].length) data[f.id] = rows;
-  const head = f.columns.map((c) => `<th>${esc(c.label)}</th>`).join('') + '<th></th>';
-  const body = rows.map((r, i) => '<tr>' + f.columns.map((c) => {
-    if (c.calc) return `<td class="calc">${esc(c.calc(r, rows))}</td>`;
-    const v = r[c.id] ?? '';
-    const at = `data-grid="${f.id}" data-row="${i}" data-col="${c.id}"`;
-    if (c.type === 'select') return `<td><select ${at}>${c.options.map(([k, l]) => `<option value="${esc(k)}"${k === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></td>`;
-    if (c.type === 'number') return `<td><input type="number" inputmode="numeric" min="0" ${at} value="${esc(v)}"></td>`;
-    return `<td><input type="text" ${at} value="${esc(v)}" autocomplete="off"${c.placeholder ? ` placeholder="${esc(c.placeholder)}"` : ''}></td>`;
-  }).join('') + `<td><button type="button" class="link danger-text" data-grid-del="${f.id}" data-row="${i}" aria-label="Remove row">✕</button></td></tr>`).join('');
-  return `<div class="grid-wrap"><table class="grid"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
-    <div class="grid-actions"><button type="button" class="small" data-grid-add="${f.id}">+ Add ${esc(f.rowName || 'row')}</button></div>`;
+  const del = (i) => `<button type="button" class="link danger-text" data-grid-del="${f.id}" data-row="${i}" aria-label="Remove ${esc(f.rowName || 'row')}">${f.layout === 'cards' ? 'Remove' : '✕'}</button>`;
+  let body;
+  if (f.layout === 'cards') {
+    body = rows.map((r, i) => `<div class="grid-card${r._auto ? ' from-link' : ''}"><div class="grid-card-head"><strong>${esc(cap(f.rowName || 'row'))} ${i + 1}</strong>${r._auto ? '<span class="muted small">from a linked document</span>' : ''}${del(i)}</div>
+      ${f.columns.map((c) => `<label class="grid-card-field${c.type === 'image' ? ' img-field' : ''}"><span>${esc(c.label)}${c.optional ? ' <span class="muted">(optional)</span>' : ''}</span>${gridCell(f, c, r, i, rows)}</label>`).join('')}</div>`).join('');
+  } else {
+    const head = f.columns.map((c) => `<th>${esc(c.label)}</th>`).join('') + '<th></th>';
+    body = `<div class="grid-wrap"><table class="grid"><thead><tr>${head}</tr></thead><tbody>${rows.map((r, i) => '<tr>' + f.columns.map((c) => `<td${c.calc ? ' class="calc"' : ''}>${gridCell(f, c, r, i, rows)}</td>`).join('') + `<td>${del(i)}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  const foot = f.footer ? `<p class="grid-footer" data-gridfoot="${f.id}">${esc(f.footer(rows))}</p>` : '';
+  return `${body}${foot}<div class="grid-actions"><button type="button" class="small" data-grid-add="${f.id}">+ Add ${esc(f.rowName || 'row')}</button></div>`;
 }
 
 // Photos and screenshots are shrunk and re-encoded on the device before saving.
@@ -289,13 +306,13 @@ function bindFields(root, data, onChange) {
       const rows = data[t.dataset.grid];
       rows[+t.dataset.row][t.dataset.col] = t.type === 'number' ? (t.value === '' ? '' : Number(t.value)) : t.value;
       const f = fieldMap[t.dataset.grid];
-      if (f.columns.some((c) => c.calc)) {
-        // Refresh computed cells without rebuilding the inputs being typed in.
-        root.querySelectorAll(`[data-gridfield="${f.id}"] tbody tr`).forEach((tr, i) => {
-          const cells = tr.querySelectorAll('td');
-          f.columns.forEach((c, ci) => { if (c.calc) cells[ci].textContent = c.calc(rows[i], rows); });
-        });
-      }
+      // Refresh computed cells and totals without rebuilding the inputs being typed in.
+      root.querySelectorAll(`[data-calc^="${f.id}:"]`).forEach((el) => {
+        const [, i, col] = el.dataset.calc.split(':');
+        el.textContent = f.columns.find((c) => c.id === col).calc(rows[+i], rows);
+      });
+      const foot = root.querySelector(`[data-gridfoot="${f.id}"]`);
+      if (foot) foot.textContent = f.footer(rows);
     } else if (t.dataset.image) {
       return;
     } else if (t.dataset.combo) {
@@ -337,6 +354,16 @@ function bindFields(root, data, onChange) {
   };
   root.addEventListener('change', async (e) => {
     const t = e.target;
+    if (t.dataset.gridImg && t.files[0]) {
+      try {
+        data[t.dataset.gridImg][+t.dataset.row][t.dataset.col] = await readImage(t.files[0]);
+      } catch (err) {
+        alertBox('Image not added', `<p>${esc(err.message)}</p>`);
+        return;
+      }
+      redrawGrid(t.dataset.gridImg);
+      return;
+    }
     if (!t.dataset.image || !t.files[0]) return;
     try {
       data[t.dataset.image] = await readImage(t.files[0]);
@@ -356,6 +383,12 @@ function bindFields(root, data, onChange) {
       rows.splice(+del.dataset.row, 1);
       if (!rows.length) rows.push({});
       redrawGrid(del.dataset.gridDel);
+      return;
+    }
+    const gImgDel = e.target.closest('[data-grid-imgdel]');
+    if (gImgDel) {
+      data[gImgDel.dataset.gridImgdel][+gImgDel.dataset.row][gImgDel.dataset.col] = '';
+      redrawGrid(gImgDel.dataset.gridImgdel);
       return;
     }
     const imgDel = e.target.closest('[data-image-del]');
