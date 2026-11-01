@@ -8,11 +8,15 @@ An installable web app (PWA) that turns structured answers into audit-ready clin
 
 | Form | File |
 |---|---|
+| Intake Summary and Assessment Plan | `js/forms/intake.js` |
 | Functional Behavior Assessment | `js/forms/fba.js` |
 | Functional Analysis Summary (graph drawn from session data) | `js/forms/fa.js` |
 | Behavior Intervention Plan | `js/forms/bip.js` |
 | Crisis and Safety Plan, plus a one-page quick reference | `js/forms/crisis.js` |
 | Preference Assessment | `js/forms/preference.js` |
+| Skill Assessment Summary (tool names and your scores only; no copyrighted items) | `js/forms/skill-assessment.js` |
+| Caregiver Training Plan, plus a one-page plain-language Family summary | `js/forms/caregiver.js` |
+| Discharge Summary and Transition Plan, plus a one-page Summary for receiving staff | `js/forms/discharge.js` |
 | Skill Acquisition Program | `js/forms/skill.js` |
 | Visual Analysis and Phase Change Decision | `js/forms/visual.js` |
 | Treatment Plan | `js/forms/treatment-plan.js` |
@@ -37,7 +41,7 @@ Each option carries the exact phrase that goes into the document, so picking an 
 
 ## Extra versions of a document
 
-A form can define `variants`: another PDF built from the same answers. The crisis plan's **Quick reference** button exports a one-page, two-column version to post where staff can see it, identifying the client by first name and last initial (or initials, client ID, or full name). If it runs past one page the app says so.
+A form can define `variants`: another PDF built from the same answers. The caregiver training plan's **Family summary** and the discharge summary's **Summary for receiving staff** work the same way. The crisis plan's **Quick reference** button exports a one-page, two-column version to post where staff can see it, identifying the client by first name and last initial (or initials, client ID, or full name). If it runs past one page the app says so.
 
 ## Linked documents
 
@@ -73,6 +77,12 @@ Home → **Open it here** imports a PDF as a document on this device.
 | BIP | Crisis Plan | Crisis behavior, prompting the replacement behavior as an early response |
 | FBA | Crisis Plan | Situations in which the behavior is most likely, for the risk assessment |
 | Crisis Plan | BIP / Treatment Plan | A note that a separate crisis plan applies |
+| Intake | FBA / Preference Assessment / Treatment Plan | First problem behavior and informants / the family's named preferences as items / background, concerns, coordination |
+| Intake | Skill Assessment | Planned instruments and strengths |
+| Skill Assessment | Treatment Plan | Assessment summary and candidate goals, highest priority first |
+| Treatment Plan / BIP | Caregiver Training | Caregiver goals and schedule / goals for the BIP's procedures and a plain-language starting summary |
+| Caregiver Training | Progress Report | Caregiver training progress |
+| Treatment Plan / Progress Report / Intake | Discharge Summary | Concerns, assessments, goals / final levels and statuses / the family's original concerns |
 | Visual Analysis (several) | Progress Report | Current level, status and interpretation, matched to the goal by program or behavior name |
 | Progress Report | Treatment Plan (revised) | Goals still in progress with current levels as new baselines, new goals, service recommendation |
 

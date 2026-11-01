@@ -205,3 +205,5 @@ dialog.picker { max-width: min(92vw, 480px); }
 .export-btns { display: flex; gap: 6px; flex-shrink: 0; }
 @media (max-width: 600px) { .export-btns button { padding: 8px 10px; font-size: 14px; } }
 .pv-svg svg { max-width: 100%; height: auto; }
+.stage { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 14px 0 8px; }
+.stage:first-of-type { margin-top: 0; }

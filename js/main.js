@@ -1,5 +1,5 @@
 import * as store from './store.js';
-import { FORMS, formById } from './forms/index.js';
+import { FORMS, STAGES, formById } from './forms/index.js';
 import { CLIENT_FIELDS, PROVIDER_FIELDS, newDocData, buildModel, modelToHTML, allFields } from './engine.js';
 import { LINKS, linksInto, linksFrom, addSource, removeSource, startFrom, upgrade, pdfPayload, readPdf } from './links.js';
 import { makePdfBlob } from './pdf.js';
@@ -122,7 +122,7 @@ async function showHome() {
     <main class="home">
       <section class="card">
         <h2>New document</h2>
-        <div class="new-list">${FORMS.map((f) => `<button class="primary" data-new="${f.id}">${esc(f.title)}</button>`).join('')}</div>
+        ${STAGES.map(([stage, forms]) => `<h3 class="stage">${esc(stage)}</h3><div class="new-list">${forms.map((f) => `<button class="primary" data-new="${f.id}">${esc(f.title)}</button>`).join('')}</div>`).join('')}
         <p class="small muted import-line">Have a PDF this app exported earlier? <button class="link" data-import="1">Open it here</button> to keep working with it on this device.</p>
       </section>
       ${linksCard()}
