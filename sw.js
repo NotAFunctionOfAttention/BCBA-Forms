@@ -1,6 +1,6 @@
 // Offline cache. Serves the app's own files only; it never fetches anything
 // on behalf of the page beyond them.
-const VERSION = 'aba-docs-v0.4.0';
+const VERSION = 'aba-docs-v0.5.0';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/main.js', 'js/util.js', 'js/store.js', 'js/crypto.js', 'js/engine.js', 'js/pdf.js',

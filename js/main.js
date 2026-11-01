@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import { FORMS, formById } from './forms/index.js';
-import { CLIENT_FIELDS, PROVIDER_FIELDS, newDocData, buildModel, modelToHTML, allFields } from './engine.js';
+import { CLIENT_FIELDS, PROVIDER_FIELDS, newDocData, buildModel, modelToHTML, allFields, startFrom } from './engine.js';
 import { makePdfBlob } from './pdf.js';
 import { encryptJSON, decryptJSON } from './crypto.js';
 import { esc, uid, fmtDate } from './util.js';
@@ -51,6 +51,22 @@ async function route() {
 
 // ---------- Home ----------
 
+function linksCard() {
+  const items = FORMS.flatMap((f) => (f.next || []).map((l) => {
+    const to = formById(l.to);
+    return `<li><strong>${esc(f.title)} \u2192 ${esc(to.title)}</strong><span>Carries over the ${esc(l.carries)}.</span></li>`;
+  }));
+  return `<section class="card links-card">
+    <details>
+      <summary><h2>How documents connect</h2></summary>
+      <p>A finished document can start the next one. Open it, go to <strong>Next steps</strong> at the bottom of the Enter tab, and choose what to start. The new document copies the client and provider details plus the items listed below, and lists the earlier document under \u201cBased on\u201d in its header.</p>
+      <p>Everything copied stays editable. It is a one-time copy: changing either document later does not change the other.</p>
+      <p class="muted small">A typical sequence: FBA \u2192 BIP \u2192 a skill program for the replacement behavior \u2192 visual analysis of each program\u2019s data. A preference assessment can supply reinforcers to a BIP or a skill program at any point.</p>
+      <ul class="links-list">${items.join('')}</ul>
+    </details>
+  </section>`;
+}
+
 async function showHome() {
   const docs = (await store.listDocs()).sort((a, b) => b.updated - a.updated);
   app.innerHTML = `
@@ -60,6 +76,7 @@ async function showHome() {
         <h2>New document</h2>
         <div class="new-list">${FORMS.map((f) => `<button class="primary" data-new="${f.id}">${esc(f.title)}</button>`).join('')}</div>
       </section>
+      ${linksCard()}
       <section class="card">
         <h2>Documents on this device</h2>
         ${docs.length ? '<ul class="doc-list">' + docs.map((d) => {
@@ -314,6 +331,7 @@ function groupHTML(title, fields, data, open = true, extra = '') {
 }
 
 async function showEditor(id) {
+  window.scrollTo(0, 0);
   const doc = await store.getDoc(id);
   if (!doc) { location.hash = ''; return; }
   const form = formById(doc.form);
@@ -329,11 +347,16 @@ async function showEditor(id) {
     <div class="tabs" role="tablist"><button data-tab="form" class="on">Enter</button><button data-tab="preview">Review</button></div>
     <main class="editor" data-show="form">
       <form class="ed-form" autocomplete="off">
+        ${doc.source ? `<p class="from-note">Started from the <a href="#doc/${esc(doc.source.id)}">${esc(doc.source.title)}</a>${doc.source.date ? ' dated ' + esc(fmtDate(doc.source.date)) : ''}. Copied answers can be edited.</p>` : ''}
         ${groupHTML('Client', CLIENT_FIELDS, doc.data)}
         ${groupHTML('Document', form.dates.map((f) => ({ ...f, type: 'date' })), doc.data, true,
           `<label class="check"><input type="checkbox" id="sig_guardian"${doc.data.sig_guardian ? ' checked' : ''}> Include parent/guardian signature line</label>`)}
         ${groupHTML('Provider', PROVIDER_FIELDS, doc.data, false)}
         ${form.groups.map((g) => groupHTML(g.title, g.fields, doc.data)).join('')}
+        ${(form.next || []).length ? `<section class="group next-steps"><h3>Next steps</h3>
+          <p class="hint">Start a new document from this one. It copies the client and provider details and the items listed; nothing in this document changes.</p>
+          ${form.next.map((l, i) => `<div class="next-item"><button type="button" class="primary" data-next="${i}">${esc(l.label)}</button><small class="hint">Carries over the ${esc(l.carries)}.</small></div>`).join('')}
+        </section>` : ''}
       </form>
       <div class="ed-preview"><div id="preview"></div></div>
     </main>`;
@@ -356,6 +379,17 @@ async function showEditor(id) {
   bindFields(formEl, doc.data, () => { save(); soon(); });
   $('#sig_guardian').addEventListener('change', (e) => { doc.data.sig_guardian = e.target.checked; save(); soon(); });
   formEl.addEventListener('submit', (e) => e.preventDefault());
+  formEl.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-next]');
+    if (!b) return;
+    const link = form.next[+b.dataset.next];
+    clearTimeout(saveTimer);
+    doc.updated = Date.now();
+    await store.putDoc(doc);
+    const created = startFrom(link, form, doc, formById(link.to), await store.getSettings());
+    await store.putDoc(created);
+    location.hash = 'doc/' + created.id;
+  });
 
   document.querySelector('.tabs').onclick = (e) => {
     const b = e.target.closest('button[data-tab]');

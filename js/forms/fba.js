@@ -1,7 +1,7 @@
 // Functional Behavior Assessment report.
 // Field types and suggestion conventions are described at the top of bip.js.
 
-import { cap, frag, fin, joinList } from '../util.js';
+import { cap, frag, fin, joinList, lines } from '../util.js';
 import * as B from './behavior-suggest.js';
 import { TARGETS, ASSESSMENTS, FUNCTIONS } from './common.js';
 
@@ -102,6 +102,45 @@ export default {
     { id: 'assess_end', label: 'Assessment end date' },
   ],
   guardianSignature: false,
+
+  // Documents this one can start. See startFrom() in js/engine.js.
+  next: [
+    {
+      to: 'bip',
+      label: 'Start a BIP from this FBA',
+      carries: 'target behavior and definition, function, assessments, evidence, antecedents and current consequence',
+      map(d) {
+        const has = (id, k) => Array.isArray(d[id]) && d[id].includes(k);
+        // Tools the BIP lists by name; anything else goes in as an "Other" line.
+        const named = new Set(['fai', 'fast', 'qabf', 'mas', 'abc_n', 'abc_c', 'scatter']);
+        const picked = [...(d.indirect || []), ...(d.desc_methods || [])];
+        const assess = picked.filter((k) => named.has(k));
+        if ((d.records || []).length) assess.push('records');
+        const otherLines = [
+          ...(has('indirect', '__other') ? lines(d.indirect_other) : []),
+          ...(has('desc_methods', '__other') ? lines(d.desc_methods_other) : []),
+          ...(has('desc_methods', 'freq') ? ['frequency recording'] : []),
+          ...(has('desc_methods', 'dur') ? ['duration recording'] : []),
+        ];
+        if (otherLines.length) assess.push('__other');
+        const absent = lines(d.absent).map(frag);
+        const antecedents = [
+          d.hyp_ante ? fin(`Most likely when ${frag(d.hyp_ante)}`) : '',
+          String(d.setting_events || '').trim(),
+          absent.length ? fin(`Rarely observed when ${joinList(absent)}`) : '',
+        ].filter(Boolean).join(' ');
+        return {
+          tb_name: d.tb_name, tb_name__o: d.tb_name__o,
+          tb_def: d.tb_def, tb_onset: d.tb_onset, tb_offset: d.tb_offset, tb_ex: d.tb_ex, tb_nonex: d.tb_nonex,
+          fn_functions: d.fn_functions,
+          fn_assess: assess, fn_assess_other: otherLines.join('\n'),
+          fn_evidence: [d.indirect_result, d.ant_patterns, d.con_patterns].map((t) => String(t || '').trim()).filter(Boolean).join('\n\n'),
+          antecedents,
+          cur_conseq: d.hyp_conseq ? cap(frag(d.hyp_conseq)) : '',
+        };
+      },
+    },
+  ],
 
   groups: [
     {

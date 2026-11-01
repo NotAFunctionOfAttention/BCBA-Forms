@@ -1,7 +1,7 @@
 // Preference Assessment summary.
 // Field types and suggestion conventions are described at the top of bip.js.
 
-import { cap, frag, fin, joinList, mark } from '../util.js';
+import { cap, frag, fin, joinList, mark, orJoin, fmtDate } from '../util.js';
 
 const FORMATS = [
   ['MSWO (multiple stimulus without replacement)', 'multiple-stimulus without replacement (MSWO)'],
@@ -51,6 +51,13 @@ function rankOf(r, rows) {
 
 const byLevel = (d, lvl) => ranked(d.pa_results).filter((r) => levelOf(r) === lvl).map((r) => String(r.item).trim());
 
+// Items to carry forward: the high-preference ones, or the top 2 if none are high.
+const topItems = (d) => {
+  const hi = byLevel(d, 'High');
+  return hi.length ? hi : ranked(d.pa_results).slice(0, 2).map((r) => String(r.item).trim());
+};
+const whenDone = (d) => (d.assess_date || d.doc_date ? ` dated ${fmtDate(d.assess_date || d.doc_date)}` : '');
+
 export default {
   id: 'pref',
   title: 'Preference Assessment',
@@ -60,6 +67,32 @@ export default {
     { id: 'assess_date', label: 'Date of assessment' },
   ],
   guardianSignature: false,
+
+  next: [
+    {
+      to: 'skill',
+      label: 'Start a skill program using these reinforcers',
+      carries: 'highest-preference items as the program\u2019s reinforcers',
+      map: (d) => {
+        const top = topItems(d);
+        return {
+          sk_reinforcer: top.length ? `access to ${orJoin(top)} and behavior-specific praise` : '',
+          sk_rationale: top.length ? `Reinforcers were selected from the preference assessment${whenDone(d)}.` : '',
+        };
+      },
+    },
+    {
+      to: 'bip',
+      label: 'Start a BIP using these reinforcers',
+      carries: 'highest-preference items as reinforcers for the replacement behavior',
+      map: (d) => {
+        const top = topItems(d);
+        return {
+          teach_notes: top.length ? `Reinforcers for the replacement behavior will include ${joinList(top)}, identified as highly preferred in the preference assessment${whenDone(d)}.` : '',
+        };
+      },
+    },
+  ],
 
   groups: [
     {

@@ -13,7 +13,7 @@
 //
 // Option phrases are written to complete the sentence they land in.
 
-import { cap, frag, fin, joinList } from '../util.js';
+import { cap, frag, fin, joinList, thirdPerson, orJoin, fmtDate } from '../util.js';
 import * as S from './behavior-suggest.js';
 import { orList, TARGETS, MEASURES, MEASURE_COMBO, ASSESSMENTS, FUNCTIONS, MODES, PROCEDURES, PROMPTS, FADING, SCHEDULES, THINNING, COLLECTORS } from './common.js';
 
@@ -109,6 +109,45 @@ export default {
     { id: 'review_date', label: 'Review date' },
   ],
   guardianSignature: true,
+
+  next: [
+    {
+      to: 'visual',
+      label: 'Review this plan\u2019s data (visual analysis)',
+      carries: 'target behavior and measure, with the goal set to decrease',
+      map: (d) => {
+        const m = String(d.bl_measure || '');
+        const unit = /per hour/.test(m) ? 'per hour' : /percentage/.test(m) ? '%' : /duration/.test(m) ? 'minutes' : /latency/.test(m) ? 'seconds' : /frequency/.test(m) ? 'responses' : '';
+        return {
+          va_program: d.tb_name ? `${cap(frag(d.tb_name))}${m ? ': ' + frag(m) : ''}` : '',
+          va_goal_dir: 'down',
+          va_prev_name: 'baseline',
+          va_cur_name: 'intervention (behavior intervention plan)',
+          va_unit: unit,
+        };
+      },
+    },
+    {
+      to: 'skill',
+      label: 'Start a skill program for the replacement behavior',
+      carries: 'replacement behavior, response form, teaching procedure, fading, schedule, reinforcers and data collectors',
+      map: (d) => {
+        const repl = frag(d.replacement || '');
+        const modes = MODES.filter(([k]) => (d.repl_modes || []).includes(k)).map((o) => o[2]);
+        const REINF = { break: 'the requested break', attn: 'the requested attention', tan: 'the requested item or activity', help: 'the requested help', praise: 'behavior-specific praise' };
+        const reinf = (d.cons_repl || []).map((k) => REINF[k]).filter(Boolean);
+        return {
+          sk_name: repl ? cap(repl) : '', sk_name__o: !!repl,
+          sk_rationale: repl ? `This skill is the replacement behavior in the behavior intervention plan for ${frag(d.tb_name || 'the target behavior')}${d.doc_date ? ' dated ' + fmtDate(d.doc_date) : ''}.` : '',
+          sk_def: repl ? `${thirdPerson(repl)}${modes.length ? ' using ' + orJoin(modes) : ''}, without a prompt, when the opportunity is presented` : '',
+          sk_format: d.teach_proc ? frag(d.teach_proc) : '',
+          sk_fading: d.teach_fade, sk_sched: d.teach_sched, sk_thin: d.teach_thin,
+          sk_reinforcer: reinf.length ? joinList(reinf) : '',
+          sk_data_who: d.dc_who, sk_data_who_other: d.dc_who_other,
+        };
+      },
+    },
+  ],
 
   groups: [
     {

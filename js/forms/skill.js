@@ -153,6 +153,32 @@ export default {
   ],
   guardianSignature: false,
 
+  next: [
+    {
+      to: 'visual',
+      label: 'Review this program\u2019s data (visual analysis)',
+      carries: 'program name and measure, teaching phase, and the mastery criterion as the review target',
+      map: (d) => {
+        const p = prog(d);
+        const name = p ? p.label : cap(frag(d.sk_name || ''));
+        const data = String(d.sk_data || '');
+        const measure = /first-trial/.test(data) ? '% correct on the first trial'
+          : /task analysis/.test(data) ? '% of steps completed independently'
+          : /probe/.test(data) ? '% correct on probes'
+          : /duration/.test(data) ? 'duration'
+          : '% correct';
+        return {
+          va_program: name ? `${name}: ${measure}` : '',
+          va_goal_dir: 'up',
+          va_prev_name: 'baseline',
+          va_cur_name: d.sk_format ? frag(d.sk_format) : '',
+          va_unit: measure === 'duration' ? 'seconds' : '%',
+          va_review_crit: d.sk_mastery ? `the mastery criterion of ${frag(d.sk_mastery)} is met` : '',
+        };
+      },
+    },
+  ],
+
   groups: [
     {
       title: 'Skill',

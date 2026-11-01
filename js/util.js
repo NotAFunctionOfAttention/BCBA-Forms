@@ -56,3 +56,15 @@ export function esc(s) {
 }
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+// "request a break" -> "requests a break" (first word only).
+export function thirdPerson(phrase) {
+  const t = String(phrase ?? '').trim();
+  const m = /^(\S+)(.*)$/s.exec(t);
+  if (!m) return t;
+  const w = m[1];
+  const v = /(s|sh|ch|x|z)$/.test(w) ? w + 'es' : /[^aeiou]y$/.test(w) ? w.slice(0, -1) + 'ies' : w + 's';
+  return v + m[2];
+}
+
+export const orJoin = (a) => (a.length <= 2 ? a.join(' or ') : a.slice(0, -1).join(', ') + ', or ' + a[a.length - 1]);

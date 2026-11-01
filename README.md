@@ -31,6 +31,21 @@ Answer types:
 
 Each option carries the exact phrase that goes into the document, so picking an option never produces awkward wording.
 
+## Linked documents
+
+A finished document can start the next one from **Next steps** at the bottom of its Enter tab. The new document copies the client and provider details plus the items below, and shows the earlier document under "Based on" in its header. It is a one-time copy; later edits to either document do not affect the other.
+
+| From | To | Carries over |
+|---|---|---|
+| FBA | BIP | Target behavior and definition, function, assessments, evidence, antecedents, current consequence |
+| BIP | Skill Acquisition Program | Replacement behavior, response form, teaching procedure, fading, schedule, reinforcers, data collectors |
+| BIP | Visual Analysis | Target behavior and measure, goal set to decrease |
+| Preference Assessment | Skill Acquisition Program | Highest-preference items as reinforcers |
+| Preference Assessment | BIP | Highest-preference items as reinforcers for the replacement behavior |
+| Skill Acquisition Program | Visual Analysis | Program and measure, teaching phase, mastery criterion as the review target |
+
+Links are defined in each form's `next` list and created by `startFrom()` in `js/engine.js`.
+
 ## Using it
 
 1. **Settings → Provider defaults**: practice, author and supervising BCBA details, filled into every new document.
