@@ -1,0 +1,5 @@
+*.pdf
+*.abadocs
+*.json.bak
+personal-data/
+.DS_Store
