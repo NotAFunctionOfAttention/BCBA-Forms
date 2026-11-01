@@ -58,7 +58,7 @@ export function allFields(form) {
 export function newDocData(form, settings) {
   const data = {};
   Object.values(allFields(form)).forEach((f) => {
-    if (f.default !== undefined) data[f.id] = f.default;
+    if (f.default !== undefined) data[f.id] = structuredClone(f.default);
     if (f.type === 'select') data[f.id] = f.options[0][0];
     if (f.type === 'combo' && f.default === undefined) data[f.id] = '';
   });
@@ -102,14 +102,16 @@ function accessor(form, data) {
 
 const person = (name, cred) => [name, cred].map((s) => String(s || '').trim()).filter(Boolean).join(', ');
 
-export function buildModel(form, doc) {
+// `variant` builds another version of the same document from the same answers,
+// such as a crisis plan's one-page quick reference.
+export function buildModel(form, doc, variant) {
   const d = doc.data || {};
   const v = accessor(form, d);
   const first = String(d.client_name || '').trim().split(/\s+/)[0];
   const ctx = { client: first || 'the client' };
 
   const overrides = doc.overrides || {};
-  const sections = form.build(v, ctx).map((s) => ({
+  const sections = (variant ? variant.build : form.build)(v, ctx).map((s) => ({
     ...s,
     blocks: s.blocks.map((b) => {
       if (b.type !== 'p' || !b.key) return b;
@@ -151,16 +153,18 @@ export function buildModel(form, doc) {
   form.dates.filter((f) => f.required && !d[f.id]).forEach((f) => missing.add(f.label));
 
   const lastName = String(d.client_name || '').trim().split(/\s+/).pop() || 'Client';
-  const fileName = `${form.fileTag}_${lastName.replace(/[^A-Za-z0-9-]/g, '')}_${d.doc_date || 'undated'}.pdf`;
+  const fileName = `${variant ? variant.fileTag : form.fileTag}_${lastName.replace(/[^A-Za-z0-9-]/g, '')}_${d.doc_date || 'undated'}.pdf`;
 
   return {
-    title: form.title,
+    title: variant ? variant.title : form.title,
+    quick: !!(variant && variant.quick),
+    idLine: variant && variant.idLine ? variant.idLine(d) : '',
     practice: { name: d.practice_name, addr: d.practice_addr, phone: d.practice_phone, npi: d.practice_npi },
     clientLine: [d.client_name, d.client_dob ? 'DOB ' + fmtDate(d.client_dob) : '', d.client_id ? 'ID ' + d.client_id : ''].filter(Boolean).join('  |  '),
     docDate: fmtDate(d.doc_date),
     idRows,
     sections,
-    signers,
+    signers: variant && variant.quick ? [] : signers,
     missing: [...missing],
     fileName,
   };
@@ -197,6 +201,8 @@ export function modelToHTML(m) {
           if (b.stale) out.push('<div class="stale-note">Your answers changed after you edited this paragraph. <button type="button" class="link" data-act="revert">Use updated text</button> or <button type="button" class="link" data-act="keep">keep your wording</button>.</div>');
         }
         out.push('</div>');
+      } else if (b.type === 'svg') {
+        out.push(`<figure class="pv-fig pv-svg">${b.svg}${b.caption ? `<figcaption>${hl(b.caption)}</figcaption>` : ''}</figure>`);
       } else if (b.type === 'image') {
         out.push(`<figure class="pv-fig"><img src="${esc(b.src)}" alt="">${b.caption ? `<figcaption>${hl(b.caption)}</figcaption>` : ''}</figure>`);
       } else if (b.type === 'sub') {

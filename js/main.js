@@ -306,6 +306,14 @@ function bindFields(root, data, onChange) {
       const rows = data[t.dataset.grid];
       rows[+t.dataset.row][t.dataset.col] = t.type === 'number' ? (t.value === '' ? '' : Number(t.value)) : t.value;
       const f = fieldMap[t.dataset.grid];
+      // A column can fill another blank column of the same row from its choice
+      // (e.g. choosing an FA condition fills in its standard description).
+      const col = f.columns.find((c) => c.id === t.dataset.col);
+      if (col && col.fills && t.value && col.fills.values[t.value] && !String(rows[+t.dataset.row][col.fills.col] || '').trim()) {
+        rows[+t.dataset.row][col.fills.col] = col.fills.values[t.value];
+        const target = root.querySelector(`[data-grid="${f.id}"][data-row="${t.dataset.row}"][data-col="${col.fills.col}"]`);
+        if (target) target.value = col.fills.values[t.value];
+      }
       // Refresh computed cells and totals without rebuilding the inputs being typed in.
       root.querySelectorAll(`[data-calc^="${f.id}:"]`).forEach((el) => {
         const [, i, col] = el.dataset.calc.split(':');
@@ -443,7 +451,7 @@ async function showEditor(id) {
     <header class="bar">
       <a class="btn" href="#">Documents</a>
       <h1 class="doc-title">${esc(form.title)}</h1>
-      <button class="primary" id="export">Export PDF</button>
+      <span class="export-btns">${(form.variants || []).map((vr, i) => `<button data-variant="${i}">${esc(vr.label)}</button>`).join('')}<button class="primary" id="export">Export PDF</button></span>
     </header>
     <div class="tabs" role="tablist"><button data-tab="form" class="on">Enter</button><button data-tab="preview">Review</button></div>
     <main class="editor" data-show="form">
@@ -590,10 +598,12 @@ async function showEditor(id) {
     }
   });
 
-  $('#export').onclick = async () => {
+  const exportPdf = async (btn, variant) => {
     model = buildModel(form, doc);
-    if (model.missing.length) {
-      await alertBox('Not ready to export', `<p>These items still need an answer:</p><ul class="missing-list">${model.missing.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>`);
+    const out = variant ? buildModel(form, doc, variant) : model;
+    if (out.missing.length || model.missing.length) {
+      const list = [...new Set([...model.missing, ...out.missing])];
+      await alertBox('Not ready to export', `<p>These items still need an answer:</p><ul class="missing-list">${list.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>`);
       return;
     }
     const stale = model.sections.flatMap((s) => s.blocks).filter((b) => b.stale);
@@ -601,18 +611,23 @@ async function showEditor(id) {
       await alertBox('Check edited wording', `<p>${stale.length} paragraph${stale.length > 1 ? 's were' : ' was'} edited before later answer changes. On the Review tab, choose "Use updated text" or "keep your wording" for each one, then export.</p>`);
       return;
     }
-    const btn = $('#export');
+    const label = btn.textContent;
     btn.disabled = true; btn.textContent = 'Building…';
     try {
       const settings = await store.getSettings();
-      const blob = await makePdfBlob(model, settings.embedData === false ? null : pdfPayload(form, doc));
-      await saveFile(blob, model.fileName);
+      const blob = await makePdfBlob(out, settings.embedData === false ? null : pdfPayload(form, doc));
+      if (variant && variant.onePage && blob.pages > 1) {
+        await alertBox('Longer than one page', `<p>The ${esc(variant.label.toLowerCase())} runs to ${blob.pages} pages. A quick reference is meant to fit on one page so it can be posted. Shorten the longest lists, then export again.</p>`);
+      }
+      await saveFile(blob, out.fileName);
     } catch (err) {
       await alertBox('Export failed', `<p>${esc(err.message || err)}</p>`);
     } finally {
-      btn.disabled = false; btn.textContent = 'Export PDF';
+      btn.disabled = false; btn.textContent = label;
     }
   };
+  $('#export').onclick = (e) => exportPdf(e.currentTarget);
+  document.querySelectorAll('[data-variant]').forEach((b) => { b.onclick = () => exportPdf(b, form.variants[+b.dataset.variant]); });
 }
 
 // ---------- Settings ----------

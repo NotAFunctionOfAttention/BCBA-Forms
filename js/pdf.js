@@ -25,6 +25,8 @@ function block(b) {
   switch (b.type) {
     case 'p': return { text: b.text, style: 'body' };
     case 'sub': return { text: b.text, style: 'h3' };
+    case 'svg':
+      return { stack: [{ svg: b.svg, width: b.width || 470, alignment: 'center' }, b.caption ? { text: b.caption, style: 'caption' } : ''], margin: [0, 2, 0, 8], unbreakable: true };
     case 'image':
       return { stack: [{ image: b.src, fit: [504, 300], alignment: 'center' }, b.caption ? { text: b.caption, style: 'caption' } : ''], margin: [0, 2, 0, 8], unbreakable: true };
     case 'ul': return { ul: b.items, style: 'list' };
@@ -89,28 +91,48 @@ export function modelToPdf(m, payload) {
   const p = m.practice;
   const content = [];
 
-  if (p.name || p.addr || p.phone) {
+  if (m.quick) {
+    if (p.name || p.phone) content.push({ text: [p.name, p.phone].filter(Boolean).join('   |   '), style: 'practiceSub' });
+  } else if (p.name || p.addr || p.phone) {
     content.push({ text: p.name || '', style: 'practice' });
     const sub = [p.addr, p.phone].filter(Boolean).join('   |   ');
     if (sub) content.push({ text: sub, style: 'practiceSub' });
     if (p.npi) content.push({ text: 'NPI ' + p.npi, style: 'practiceSub' });
   }
-  content.push({ text: m.title.toUpperCase(), style: 'title' });
-  if (m.idRows.length) content.push(idTable(m.idRows));
-
-  for (const s of m.sections) {
-    const blocks = s.blocks.map(block).filter(Boolean);
-    // Keep each heading with the start of its section.
-    content.push({ stack: [sectionHeading(s.heading), blocks[0] || ''], unbreakable: true });
-    content.push(...blocks.slice(1));
+  content.push({ text: m.title.toUpperCase(), style: m.quick ? 'quickTitle' : 'title' });
+  if (m.quick) {
+    // One-page quick reference: a single identification line, shaded section
+    // bars, larger type, no signature block.
+    if (m.idLine) content.push({ text: m.idLine, style: 'quickId' });
+    const sectionStack = (s) => ({
+      stack: [{ table: { widths: ['*'], body: [[{ text: s.heading.toUpperCase(), style: 'quickHead', fillColor: '#222222', color: '#ffffff' }]] }, layout: 'noBorders', margin: [0, 6, 0, 3] }, ...s.blocks.map(block).filter(Boolean)],
+      unbreakable: true,
+    });
+    // Sections marked col 1 or 2 are laid out side by side to fit one page.
+    if (m.sections.some((s) => s.col)) {
+      content.push({
+        columns: [1, 2].map((c) => ({ width: '*', stack: m.sections.filter((s) => (s.col || 1) === c).map(sectionStack) })),
+        columnGap: 16,
+      });
+    } else {
+      content.push(...m.sections.map(sectionStack));
+    }
+  } else {
+    if (m.idRows.length) content.push(idTable(m.idRows));
+    for (const s of m.sections) {
+      const blocks = s.blocks.map(block).filter(Boolean);
+      // Keep each heading with the start of its section.
+      content.push({ stack: [sectionHeading(s.heading), blocks[0] || ''], unbreakable: true });
+      content.push(...blocks.slice(1));
+    }
+    if (m.signers.length) content.push(signatures(m.signers));
   }
-  content.push(signatures(m.signers));
 
   return {
     pageSize: 'LETTER',
-    pageMargins: [54, 64, 54, 58],
+    pageMargins: m.quick ? [42, 36, 42, 50] : [54, 64, 54, 58],
     info: { title: m.title, subject: m.title, creator: m.practice.name || '', producer: m.practice.name || '', ...(payload ? { AbaDocsData: payload } : {}) },
-    header: (page) => (page === 1 ? null : {
+    header: (page) => (page === 1 || m.quick ? null : {
       columns: [
         { text: m.clientLine, alignment: 'left' },
         { text: m.title, alignment: 'right' },
@@ -128,7 +150,7 @@ export function modelToPdf(m, payload) {
       style: 'runFoot', margin: [54, 14, 54, 0],
     }),
     content,
-    defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.25, color: INK },
+    defaultStyle: { font: 'Roboto', fontSize: m.quick ? 9.5 : 10, lineHeight: m.quick ? 1.15 : 1.25, color: INK },
     styles: {
       practice: { fontSize: 13, bold: true, alignment: 'center' },
       practiceSub: { fontSize: 9, alignment: 'center', color: '#333333' },
@@ -141,6 +163,9 @@ export function modelToPdf(m, payload) {
       dl: { margin: [0, 0, 0, 4] },
       table: { fontSize: 9, margin: [0, 2, 0, 8] },
       sigLabel: { fontSize: 9 },
+      quickTitle: { fontSize: 16, bold: true, alignment: 'center', margin: [0, 6, 0, 2], characterSpacing: 0.5 },
+      quickId: { fontSize: 11, bold: true, alignment: 'center', margin: [0, 0, 0, 6] },
+      quickHead: { fontSize: 9.5, bold: true, characterSpacing: 0.4, margin: [4, 2, 4, 2] },
       caption: { fontSize: 8.5, italics: true, alignment: 'center', margin: [0, 3, 0, 0], color: '#333333' },
       runHead: { fontSize: 8, color: '#444444' },
       runFoot: { fontSize: 8, color: '#444444' },
@@ -151,7 +176,12 @@ export function modelToPdf(m, payload) {
 export function makePdfBlob(model, payload) {
   return new Promise((resolve, reject) => {
     try {
-      window.pdfMake.createPdf(modelToPdf(model, payload)).getBlob(resolve);
+      // Record the page count so a one-page quick reference can be checked.
+      const def = modelToPdf(model, payload);
+      let pages = 0;
+      const footer = def.footer;
+      def.footer = (page, total) => { pages = total; return footer(page, total); };
+      window.pdfMake.createPdf(def).getBlob((blob) => { blob.pages = pages; resolve(blob); });
     } catch (e) {
       reject(e);
     }

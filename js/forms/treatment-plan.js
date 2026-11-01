@@ -175,7 +175,7 @@ export default {
       title: 'Assessment summary',
       fields: [
         { id: 'tp_assessments', label: 'Assessments completed', type: 'multi', options: ASSESSMENTS, other: true, combine: 'union' },
-        { id: 'tp_fba_summary', label: 'Functional behavior assessment summary', type: 'textarea', optional: true, hint: 'Optional. Filled in when an FBA is linked.' },
+        { id: 'tp_fba_summary', label: 'Functional assessment summary', type: 'textarea', optional: true, combine: 'paragraphs', hint: 'Optional. Filled in when an FBA or FA summary is linked.' },
         { id: 'tp_pref_summary', label: 'Preference assessment summary', type: 'textarea', optional: true, hint: 'Optional. Filled in when preference assessments are linked.' },
         { id: 'tp_skill_summary', label: 'Skill assessment summary', type: 'textarea', optional: true, hint: 'Optional. Strengths, deficits and barriers, and any scores the payer requires. Full sentences.' },
       ],

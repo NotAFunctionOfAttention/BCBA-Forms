@@ -201,3 +201,7 @@ dialog.picker { max-width: min(92vw, 480px); }
 .grid-card-field input, .grid-card-field select, .grid-card-field textarea { font-weight: 400; background: var(--card); }
 .grid-card-field img { max-width: 100%; max-height: 200px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
 .grid-footer { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
+
+.export-btns { display: flex; gap: 6px; flex-shrink: 0; }
+@media (max-width: 600px) { .export-btns button { padding: 8px 10px; font-size: 14px; } }
+.pv-svg svg { max-width: 100%; height: auto; }

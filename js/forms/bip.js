@@ -172,9 +172,9 @@ export default {
     {
       title: 'Hypothesized function',
       fields: [
-        { id: 'fn_assess', label: 'Assessments conducted', type: 'multi', options: ASSESSMENTS, other: true, otherHint: 'One per line, e.g. a caregiver rating scale' },
+        { id: 'fn_assess', label: 'Assessments conducted', combine: 'union', type: 'multi', options: ASSESSMENTS, other: true, otherHint: 'One per line, e.g. a caregiver rating scale' },
         { id: 'fn_functions', label: 'Function', type: 'multi', options: FUNCTIONS },
-        { id: 'fn_evidence', label: 'Supporting evidence', type: 'textarea', hint: 'Full sentences. e.g. 80% of recorded episodes followed a demand and ended with removal of the task.' },
+        { id: 'fn_evidence', label: 'Supporting evidence', combine: 'paragraphs', type: 'textarea', hint: 'Full sentences. e.g. 80% of recorded episodes followed a demand and ended with removal of the task.' },
       ],
     },
     {

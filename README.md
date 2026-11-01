@@ -9,7 +9,9 @@ An installable web app (PWA) that turns structured answers into audit-ready clin
 | Form | File |
 |---|---|
 | Functional Behavior Assessment | `js/forms/fba.js` |
+| Functional Analysis Summary (graph drawn from session data) | `js/forms/fa.js` |
 | Behavior Intervention Plan | `js/forms/bip.js` |
+| Crisis and Safety Plan, plus a one-page quick reference | `js/forms/crisis.js` |
 | Preference Assessment | `js/forms/preference.js` |
 | Skill Acquisition Program | `js/forms/skill.js` |
 | Visual Analysis and Phase Change Decision | `js/forms/visual.js` |
@@ -32,6 +34,10 @@ Answer types:
 `suggest` can also be a function of the answers so far (see `js/forms/behavior-suggest.js`): picking a target behavior offers matching definitions, onsets, offsets, examples and non-examples; ticking a function offers matching antecedents, strategies and desired behaviors; goals are drafted from the behavior, replacement, measure and review date. A used suggestion shows a check mark and tapping it again removes it.
 
 Each option carries the exact phrase that goes into the document, so picking an option never produces awkward wording.
+
+## Extra versions of a document
+
+A form can define `variants`: another PDF built from the same answers. The crisis plan's **Quick reference** button exports a one-page, two-column version to post where staff can see it, identifying the client by first name and last initial (or initials, client ID, or full name). If it runs past one page the app says so.
 
 ## Linked documents
 
@@ -61,6 +67,12 @@ Home → **Open it here** imports a PDF as a document on this device.
 | BIP | Treatment Plan | BIP summary, crisis plan status, the BIP's goals |
 | Skill Acquisition Program (several) | Treatment Plan | One goal per program, with baseline and mastery criterion |
 | Treatment Plan | Progress Report | Goals and baselines, services, coordination of care |
+| FBA | FA Summary | Target behavior and definition, the hypothesis to test |
+| FA Summary | BIP | Target behavior, confirmed function, FA results as evidence (combined with FBA evidence if both are linked) |
+| FA Summary | Treatment Plan | The FA result in the assessment summary |
+| BIP | Crisis Plan | Crisis behavior, prompting the replacement behavior as an early response |
+| FBA | Crisis Plan | Situations in which the behavior is most likely, for the risk assessment |
+| Crisis Plan | BIP / Treatment Plan | A note that a separate crisis plan applies |
 | Visual Analysis (several) | Progress Report | Current level, status and interpretation, matched to the goal by program or behavior name |
 | Progress Report | Treatment Plan (revised) | Goals still in progress with current levels as new baselines, new goals, service recommendation |
 
@@ -101,6 +113,7 @@ Edit the files, bump `VERSION` in `sw.js`, re-upload. Installed copies update on
 | `js/main.js` | Screens: documents, editor, settings |
 | `js/engine.js` | Identifier fields, document model, on-screen preview |
 | `js/links.js` | Linked documents, fill rules, re-import data in PDFs |
+| `js/graph.js` | Multielement graph (SVG) for the FA summary |
 | `js/pdf.js` | PDF layout (pdfmake) |
 | `js/forms/` | One file per document type (`behavior-suggest.js` holds the BIP's answer-driven suggestions) |
 | `js/store.js` | IndexedDB storage |
