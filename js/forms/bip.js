@@ -14,6 +14,7 @@
 // Option phrases are written to complete the sentence they land in.
 
 import { cap, frag, fin, joinList } from '../util.js';
+import * as S from './bip-suggest.js';
 
 // One response reads as a sentence; several become a bulleted list.
 function staffWill(key, lead, items) {
@@ -222,11 +223,11 @@ export default {
       title: 'Target behavior',
       fields: [
         { id: 'tb_name', label: 'Target behavior', type: 'combo', options: TARGETS, hint: 'One behavior per plan.' },
-        { id: 'tb_def', label: 'Operational definition', type: 'textarea', hint: 'Completes "…is defined as". e.g. hitting or kicking another person with any part of the body' },
-        { id: 'tb_onset', label: 'Onset', hint: 'e.g. Physical contact with another person' },
-        { id: 'tb_offset', label: 'Offset', hint: 'e.g. 3 seconds pass without contact' },
-        { id: 'tb_ex', label: 'Examples', type: 'list', hint: 'One per line' },
-        { id: 'tb_nonex', label: 'Non-examples', type: 'list', hint: 'One per line' },
+        { id: 'tb_def', label: 'Operational definition', type: 'textarea', hint: 'Completes "…is defined as". Tap a suggestion to use it, then edit it to fit.', suggest: S.definition, suggestMode: 'replace', suggestEmpty: 'Choose a target behavior above to see suggestions.' },
+        { id: 'tb_onset', label: 'Onset', suggest: S.onset, suggestMode: 'replace', suggestEmpty: 'Choose a target behavior above to see suggestions.' },
+        { id: 'tb_offset', label: 'Offset', suggest: S.offset, suggestMode: 'replace', suggestEmpty: 'Choose a target behavior above to see suggestions.' },
+        { id: 'tb_ex', label: 'Examples', type: 'list', hint: 'One per line', suggest: S.examples, suggestEmpty: 'Choose a target behavior above to see suggestions.' },
+        { id: 'tb_nonex', label: 'Non-examples', type: 'list', hint: 'One per line', suggest: S.nonExamples, suggestEmpty: 'Choose a target behavior above to see suggestions.' },
       ],
     },
     {
@@ -248,29 +249,19 @@ export default {
     {
       title: 'Competing behavior pathway',
       fields: [
-        { id: 'antecedents', label: 'Setting events and antecedents', type: 'textarea', hint: 'When it is most and least likely. e.g. Most likely during tabletop work lasting 10 minutes or longer; rarely observed during play.' },
+        { id: 'antecedents', label: 'Setting events and antecedents', type: 'textarea', hint: 'When it is most and least likely. Suggestions follow the function you ticked.', suggest: S.antecedents },
         { id: 'cur_conseq', label: 'Current maintaining consequence', type: 'combo', options: CURRENT },
         { id: 'replacement', label: 'Replacement behavior', type: 'combo', options: REPLACEMENTS, hint: 'Same function, easier to do. A custom answer should complete "will be taught to".' },
         { id: 'repl_modes', label: 'Response form', type: 'multi', options: MODES, other: true, optional: true, otherHint: 'One per line, e.g. a break card on a lanyard' },
-        { id: 'desired', label: 'Desired long-term behavior', hint: 'Completes "for the client to". e.g. complete 10-minute work periods with scheduled breaks' },
+        { id: 'desired', label: 'Desired long-term behavior', hint: 'Completes "for the client to".', suggest: S.desired, suggestMode: 'replace', suggestEmpty: 'Tick a function above to see suggestions.' },
       ],
     },
     {
       title: 'Antecedent strategies',
       fields: [
         {
-          id: 'ant_strats', label: 'Antecedent strategies', type: 'list', hint: 'One per line, each tied to an antecedent above. Tap a suggestion to add it, then edit it to fit.',
-          suggest: [
-            'Visual schedule reviewed at the start of each session',
-            'High-probability request sequence before non-preferred tasks',
-            'Choice of tasks, materials, or order of activities',
-            'Noncontingent reinforcement (NCR) on a fixed-time schedule',
-            'Advance warning and a visual timer before transitions',
-            'First-then statements pairing non-preferred with preferred activities',
-            'Work periods shortened and gradually lengthened (demand fading)',
-            'Priming with a preview of upcoming activities',
-            'Preferred items freely available during low-demand periods',
-          ],
+          id: 'ant_strats', label: 'Antecedent strategies', type: 'list', hint: 'One per line, each tied to an antecedent above. Suggestions follow the function you ticked; tap to add, then edit to fit.',
+          suggest: S.strategies,
         },
       ],
     },
@@ -282,7 +273,7 @@ export default {
         { id: 'teach_fade', label: 'Prompt fading', type: 'combo', options: FADING, optional: true },
         { id: 'teach_sched', label: 'Initial reinforcement schedule', type: 'combo', options: SCHEDULES },
         { id: 'teach_thin', label: 'Schedule thinning', type: 'combo', options: THINNING, optional: true },
-        { id: 'teach_notes', label: 'Additional teaching details', type: 'textarea', optional: true, hint: 'Optional. Full sentences, e.g. time delay steps or thinning criteria.' },
+        { id: 'teach_notes', label: 'Additional teaching details', type: 'textarea', optional: true, hint: 'Optional. Full sentences.', suggest: S.teachNotes },
       ],
     },
     {
@@ -297,7 +288,7 @@ export default {
       title: 'Crisis and safety',
       fields: [
         { id: 'safety', label: 'Safety', type: 'select', options: [['none', 'No crisis procedures are indicated'], ['protocol', 'A separate crisis protocol applies']] },
-        { id: 'safety_note', label: 'Safety notes', type: 'textarea', optional: true, hint: 'Optional. Risk of injury, protocol name and date.' },
+        { id: 'safety_note', label: 'Safety notes', type: 'textarea', optional: true, hint: 'Optional. Risk of injury, protocol name and date.', suggest: S.safetyNotes },
       ],
     },
     {
@@ -307,13 +298,13 @@ export default {
         { id: 'dc_who', label: 'Collected by', type: 'multi', options: COLLECTORS, other: true },
         { id: 'dc_when', label: 'When', type: 'combo', options: WHEN },
         { id: 'dc_review', label: 'Graphed and reviewed by the BCBA', type: 'combo', options: REVIEW },
-        { id: 'dc_notes', label: 'Additional data details', type: 'textarea', optional: true, hint: 'Optional. Full sentences.' },
+        { id: 'dc_notes', label: 'Additional data details', type: 'textarea', optional: true, hint: 'Optional. Full sentences.', suggest: S.dataNotes },
       ],
     },
     {
       title: 'Goals, generalization and maintenance',
       fields: [
-        { id: 'goals', label: 'Goals', type: 'list', hint: 'One per line. Measurable, with criterion and target date.' },
+        { id: 'goals', label: 'Goals', type: 'list', hint: 'One per line. Suggestions use your answers above and the review date; adjust the criteria to fit.', suggest: S.goals, suggestEmpty: 'Choose a target behavior above to see suggestions.' },
         {
           id: 'gen_maint', label: 'Generalization and maintenance', type: 'textarea', hint: 'Full sentences. Tap a suggestion to add it, then edit it to fit.',
           suggest: [

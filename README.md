@@ -21,6 +21,8 @@ Answer types:
 | `multi` | Checkboxes; with `other: true`, an **Other** box opens a text box (one item per line) |
 | `text`, `textarea`, `list` | Open answers. `suggest` adds tap-to-insert phrases that you can then edit |
 
+`suggest` can also be a function of the answers so far (see `js/forms/bip-suggest.js`): picking a target behavior offers matching definitions, onsets, offsets, examples and non-examples; ticking a function offers matching antecedents, strategies and desired behaviors; goals are drafted from the behavior, replacement, measure and review date. A used suggestion shows a check mark and tapping it again removes it.
+
 Each option carries the exact phrase that goes into the document, so picking an option never produces awkward wording.
 
 ## Using it
@@ -58,7 +60,7 @@ Edit the files, bump `VERSION` in `sw.js`, re-upload. Installed copies update on
 | `js/main.js` | Screens: documents, editor, settings |
 | `js/engine.js` | Identifier fields, document model, on-screen preview |
 | `js/pdf.js` | PDF layout (pdfmake) |
-| `js/forms/` | One file per document type |
+| `js/forms/` | One file per document type (`bip-suggest.js` holds the BIP's answer-driven suggestions) |
 | `js/store.js` | IndexedDB storage |
 | `js/crypto.js` | Encrypted backup |
 | `js/util.js` | Text helpers |

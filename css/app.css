@@ -145,3 +145,4 @@ dialog h3 { margin: 0 0 10px; }
 fieldset.checks .hint { display: block; margin-bottom: 4px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--bg); text-align: left; }
+.chip.used { background: var(--edit-bg); border-color: var(--accent); }

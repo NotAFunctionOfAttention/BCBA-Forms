@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import { FORMS, formById } from './forms/index.js';
-import { CLIENT_FIELDS, PROVIDER_FIELDS, newDocData, buildModel, modelToHTML } from './engine.js';
+import { CLIENT_FIELDS, PROVIDER_FIELDS, newDocData, buildModel, modelToHTML, allFields } from './engine.js';
 import { makePdfBlob } from './pdf.js';
 import { encryptJSON, decryptJSON } from './crypto.js';
 import { esc, uid, fmtDate } from './util.js';
@@ -103,7 +103,7 @@ function fieldHTML(f, data) {
   const id = 'f_' + f.id;
   const hint = f.hint ? `<small class="hint">${esc(f.hint)}</small>` : '';
   const opt = f.optional ? ' <span class="muted">(optional)</span>' : '';
-  const chips = f.suggest ? `<div class="chips">${f.suggest.map((t) => `<button type="button" class="chip" data-chip="${f.id}" data-text="${esc(t)}">+ ${esc(t)}</button>`).join('')}</div>` : '';
+  const chips = f.suggest ? `<div class="chips" data-chips="${f.id}">${chipsInner(f, data)}</div>` : '';
   let input;
   switch (f.type) {
     case 'textarea':
@@ -140,6 +140,20 @@ function fieldHTML(f, data) {
   return `<div class="field"><label for="${id}">${esc(f.label)}${opt}</label>${hint}${input}${chips}</div>`;
 }
 
+// Suggestions can be a fixed list or depend on other answers. A used one
+// shows a check mark; tapping it again takes it back out.
+const chipUsed = (f, value, t) => (f.suggestMode === 'replace' ? value.trim() === t : value.includes(t.replace(/\.$/, '')));
+
+function chipsInner(f, data) {
+  const list = typeof f.suggest === 'function' ? f.suggest(data) : f.suggest;
+  if (!list.length) return f.suggestEmpty ? `<span class="hint">${esc(f.suggestEmpty)}</span>` : '';
+  const value = String(data[f.id] ?? '');
+  return list.map((t) => {
+    const used = chipUsed(f, value, t);
+    return `<button type="button" class="chip${used ? ' used' : ''}" data-chip="${f.id}" data-text="${esc(t)}">${used ? '\u2713' : '+'} ${esc(t)}</button>`;
+  }).join('');
+}
+
 // Wires every control inside `root` to write into `data`, then calls onChange.
 function bindFields(root, data, onChange) {
   root.addEventListener('input', (e) => {
@@ -172,20 +186,31 @@ function bindFields(root, data, onChange) {
       }
     }
     onChange(t);
+    root.querySelectorAll('[data-chips]').forEach((box) => { box.innerHTML = chipsInner(fieldMap[box.dataset.chips], data); });
   });
   root.addEventListener('click', (e) => {
     const chip = e.target.closest('[data-chip]');
     if (!chip) return;
-    const ta = root.querySelector(`[data-id="${chip.dataset.chip}"]`);
+    const f = fieldMap[chip.dataset.chip];
+    const el = root.querySelector(`[data-id="${f.id}"]`);
     const text = chip.dataset.text;
-    const sep = ta.tagName === 'TEXTAREA' && fieldIsList(chip.dataset.chip) ? '\n' : ' ';
-    if (!ta.value.includes(text)) ta.value = ta.value.trim() ? ta.value.replace(/\s+$/, '') + sep + text : text;
-    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    const cur = el.value;
+    if (f.suggestMode === 'replace') {
+      el.value = text;
+    } else if (chipUsed(f, cur, text)) {
+      const bare = text.replace(/\.$/, '');
+      el.value = f.type === 'list'
+        ? cur.split('\n').filter((l) => !l.includes(bare)).join('\n')
+        : cur.replace(new RegExp('\\s*' + bare.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\.?'), '').trim();
+    } else {
+      const sep = f.type === 'list' ? '\n' : ' ';
+      el.value = cur.trim() ? cur.replace(/\s+$/, '') + sep + text : text;
+    }
+    el.dispatchEvent(new Event('input', { bubbles: true }));
   });
 }
 
-let currentListIds = new Set();
-const fieldIsList = (id) => currentListIds.has(id);
+let fieldMap = {};
 
 function groupHTML(title, fields, data, open = true, extra = '') {
   return `<details class="group"${open ? ' open' : ''}><summary>${esc(title)}</summary>${fields.map((f) => fieldHTML(f, data)).join('')}${extra}</details>`;
@@ -230,7 +255,7 @@ async function showEditor(id) {
   render();
 
   const formEl = $('.ed-form');
-  currentListIds = new Set(form.groups.flatMap((g) => g.fields).filter((f) => f.type === 'list').map((f) => f.id));
+  fieldMap = allFields(form);
   bindFields(formEl, doc.data, () => { save(); soon(); });
   $('#sig_guardian').addEventListener('change', (e) => { doc.data.sig_guardian = e.target.checked; save(); soon(); });
   formEl.addEventListener('submit', (e) => e.preventDefault());
