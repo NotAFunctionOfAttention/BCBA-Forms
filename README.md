@@ -8,7 +8,11 @@ An installable web app (PWA) that turns structured answers into audit-ready clin
 
 | Form | File |
 |---|---|
+| Functional Behavior Assessment | `js/forms/fba.js` |
 | Behavior Intervention Plan | `js/forms/bip.js` |
+| Preference Assessment | `js/forms/preference.js` |
+| Skill Acquisition Program | `js/forms/skill.js` |
+| Visual Analysis and Phase Change Decision | `js/forms/visual.js` |
 
 To add a document type, write a form file like `bip.js` (entry fields in `groups`, document text in `build`) and list it in `js/forms/index.js`.
 
@@ -19,9 +23,11 @@ Answer types:
 | `select` | Closed list where every option is given (e.g. safety) |
 | `combo` | Dropdown of common answers plus **Other**, which opens a text box |
 | `multi` | Checkboxes; with `other: true`, an **Other** box opens a text box (one item per line) |
+| `grid` | Editable table with computed columns (preference results) |
+| `image` | Photo or screenshot, resized on the device and printed in the report (graphs) |
 | `text`, `textarea`, `list` | Open answers. `suggest` adds tap-to-insert phrases that you can then edit |
 
-`suggest` can also be a function of the answers so far (see `js/forms/bip-suggest.js`): picking a target behavior offers matching definitions, onsets, offsets, examples and non-examples; ticking a function offers matching antecedents, strategies and desired behaviors; goals are drafted from the behavior, replacement, measure and review date. A used suggestion shows a check mark and tapping it again removes it.
+`suggest` can also be a function of the answers so far (see `js/forms/behavior-suggest.js`): picking a target behavior offers matching definitions, onsets, offsets, examples and non-examples; ticking a function offers matching antecedents, strategies and desired behaviors; goals are drafted from the behavior, replacement, measure and review date. A used suggestion shows a check mark and tapping it again removes it.
 
 Each option carries the exact phrase that goes into the document, so picking an option never produces awkward wording.
 
@@ -60,7 +66,7 @@ Edit the files, bump `VERSION` in `sw.js`, re-upload. Installed copies update on
 | `js/main.js` | Screens: documents, editor, settings |
 | `js/engine.js` | Identifier fields, document model, on-screen preview |
 | `js/pdf.js` | PDF layout (pdfmake) |
-| `js/forms/` | One file per document type (`bip-suggest.js` holds the BIP's answer-driven suggestions) |
+| `js/forms/` | One file per document type (`behavior-suggest.js` holds the BIP's answer-driven suggestions) |
 | `js/store.js` | IndexedDB storage |
 | `js/crypto.js` | Encrypted backup |
 | `js/util.js` | Text helpers |

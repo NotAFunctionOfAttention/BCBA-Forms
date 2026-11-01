@@ -25,11 +25,13 @@ function block(b) {
   switch (b.type) {
     case 'p': return { text: b.text, style: 'body' };
     case 'sub': return { text: b.text, style: 'h3' };
+    case 'image':
+      return { stack: [{ image: b.src, fit: [504, 300], alignment: 'center' }, b.caption ? { text: b.caption, style: 'caption' } : ''], margin: [0, 2, 0, 8], unbreakable: true };
     case 'ul': return { ul: b.items, style: 'list' };
     case 'ol': return { ol: b.items, style: 'list' };
     case 'dl':
       return {
-        table: { widths: [70, '*'], body: b.rows.map(([k, v]) => [{ text: k, bold: true }, v]) },
+        table: { widths: [b.wide ? 125 : 70, '*'], body: b.rows.map(([k, v]) => [{ text: k, bold: true }, v]) },
         layout: 'noBorders', style: 'dl',
       };
     case 'table':
@@ -139,6 +141,7 @@ export function modelToPdf(m) {
       dl: { margin: [0, 0, 0, 4] },
       table: { fontSize: 9, margin: [0, 2, 0, 8] },
       sigLabel: { fontSize: 9 },
+      caption: { fontSize: 8.5, italics: true, alignment: 'center', margin: [0, 3, 0, 0], color: '#333333' },
       runHead: { fontSize: 8, color: '#444444' },
       runFoot: { fontSize: 8, color: '#444444' },
     },

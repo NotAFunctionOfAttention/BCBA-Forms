@@ -134,10 +134,58 @@ function fieldHTML(f, data) {
         <textarea class="other-input" data-id="${f.id}_other" rows="2" placeholder="${esc(f.otherHint || 'One per line')}"${set.has(OTHER) ? '' : ' hidden'}>${esc(data[f.id + '_other'] ?? '')}</textarea>` : '';
       return `<fieldset class="field checks" data-multi="${f.id}"><legend>${esc(f.label)}${opt}</legend>${hint}${boxes}${other}</fieldset>`;
     }
+    case 'number':
+      input = `<input type="number" inputmode="decimal" id="${id}" data-id="${f.id}" value="${esc(value)}">`;
+      break;
+    case 'grid':
+      return `<div class="field" data-gridfield="${f.id}"><label>${esc(f.label)}${opt}</label>${hint}${gridHTML(f, data)}</div>`;
+    case 'image':
+      return `<div class="field img-field" data-imagefield="${f.id}"><label for="${id}">${esc(f.label)}${opt}</label>${hint}
+        ${value ? `<img src="${esc(value)}" alt=""><button type="button" class="link danger-text" data-image-del="${f.id}">Remove image</button>` : ''}
+        <input type="file" id="${id}" accept="image/*" data-image="${f.id}"${value ? ' hidden' : ''}></div>`;
     default:
       input = `<input type="text" id="${id}" data-id="${f.id}" value="${esc(value)}" autocomplete="off">`;
   }
   return `<div class="field"><label for="${id}">${esc(f.label)}${opt}</label>${hint}${input}${chips}</div>`;
+}
+
+// Editable table: one object per row. Columns may be computed (`calc`).
+function gridHTML(f, data) {
+  const rows = Array.isArray(data[f.id]) && data[f.id].length ? data[f.id] : [{}];
+  if (!Array.isArray(data[f.id]) || !data[f.id].length) data[f.id] = rows;
+  const head = f.columns.map((c) => `<th>${esc(c.label)}</th>`).join('') + '<th></th>';
+  const body = rows.map((r, i) => '<tr>' + f.columns.map((c) => {
+    if (c.calc) return `<td class="calc">${esc(c.calc(r, rows))}</td>`;
+    const v = r[c.id] ?? '';
+    const at = `data-grid="${f.id}" data-row="${i}" data-col="${c.id}"`;
+    if (c.type === 'select') return `<td><select ${at}>${c.options.map(([k, l]) => `<option value="${esc(k)}"${k === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></td>`;
+    if (c.type === 'number') return `<td><input type="number" inputmode="numeric" min="0" ${at} value="${esc(v)}"></td>`;
+    return `<td><input type="text" ${at} value="${esc(v)}" autocomplete="off"${c.placeholder ? ` placeholder="${esc(c.placeholder)}"` : ''}></td>`;
+  }).join('') + `<td><button type="button" class="link danger-text" data-grid-del="${f.id}" data-row="${i}" aria-label="Remove row">✕</button></td></tr>`).join('');
+  return `<div class="grid-wrap"><table class="grid"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    <div class="grid-actions"><button type="button" class="small" data-grid-add="${f.id}">+ Add ${esc(f.rowName || 'row')}</button></div>`;
+}
+
+// Photos and screenshots are shrunk and re-encoded on the device before saving.
+function readImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * scale);
+      c.height = Math.round(img.naturalHeight * scale);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file could not be read as an image.')); };
+    img.src = url;
+  });
 }
 
 // Suggestions can be a fixed list or depend on other answers. A used one
@@ -158,7 +206,20 @@ function chipsInner(f, data) {
 function bindFields(root, data, onChange) {
   root.addEventListener('input', (e) => {
     const t = e.target;
-    if (t.dataset.combo) {
+    if (t.dataset.grid) {
+      const rows = data[t.dataset.grid];
+      rows[+t.dataset.row][t.dataset.col] = t.type === 'number' ? (t.value === '' ? '' : Number(t.value)) : t.value;
+      const f = fieldMap[t.dataset.grid];
+      if (f.columns.some((c) => c.calc)) {
+        // Refresh computed cells without rebuilding the inputs being typed in.
+        root.querySelectorAll(`[data-gridfield="${f.id}"] tbody tr`).forEach((tr, i) => {
+          const cells = tr.querySelectorAll('td');
+          f.columns.forEach((c, ci) => { if (c.calc) cells[ci].textContent = c.calc(rows[i], rows); });
+        });
+      }
+    } else if (t.dataset.image) {
+      return;
+    } else if (t.dataset.combo) {
       const id = t.dataset.combo;
       const other = t.parentElement.querySelector('.other-input');
       if (t.value === OTHER) {
@@ -186,9 +247,45 @@ function bindFields(root, data, onChange) {
       }
     }
     onChange(t);
-    root.querySelectorAll('[data-chips]').forEach((box) => { box.innerHTML = chipsInner(fieldMap[box.dataset.chips], data); });
+    refreshChips();
+  });
+  const refreshChips = () => root.querySelectorAll('[data-chips]').forEach((box) => { box.innerHTML = chipsInner(fieldMap[box.dataset.chips], data); });
+  const redrawGrid = (id) => {
+    const box = root.querySelector(`[data-gridfield="${id}"]`);
+    box.outerHTML = fieldHTML(fieldMap[id], data);
+    onChange();
+    refreshChips();
+  };
+  root.addEventListener('change', async (e) => {
+    const t = e.target;
+    if (!t.dataset.image || !t.files[0]) return;
+    try {
+      data[t.dataset.image] = await readImage(t.files[0]);
+    } catch (err) {
+      alertBox('Image not added', `<p>${esc(err.message)}</p>`);
+      return;
+    }
+    t.closest('[data-imagefield]').outerHTML = fieldHTML(fieldMap[t.dataset.image], data);
+    onChange();
   });
   root.addEventListener('click', (e) => {
+    const add = e.target.closest('[data-grid-add]');
+    if (add) { data[add.dataset.gridAdd].push({}); redrawGrid(add.dataset.gridAdd); return; }
+    const del = e.target.closest('[data-grid-del]');
+    if (del) {
+      const rows = data[del.dataset.gridDel];
+      rows.splice(+del.dataset.row, 1);
+      if (!rows.length) rows.push({});
+      redrawGrid(del.dataset.gridDel);
+      return;
+    }
+    const imgDel = e.target.closest('[data-image-del]');
+    if (imgDel) {
+      data[imgDel.dataset.imageDel] = '';
+      imgDel.closest('[data-imagefield]').outerHTML = fieldHTML(fieldMap[imgDel.dataset.imageDel], data);
+      onChange();
+      return;
+    }
     const chip = e.target.closest('[data-chip]');
     if (!chip) return;
     const f = fieldMap[chip.dataset.chip];

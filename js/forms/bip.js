@@ -14,63 +14,14 @@
 // Option phrases are written to complete the sentence they land in.
 
 import { cap, frag, fin, joinList } from '../util.js';
-import * as S from './bip-suggest.js';
+import * as S from './behavior-suggest.js';
+import { orList, TARGETS, MEASURES, MEASURE_COMBO, ASSESSMENTS, FUNCTIONS, MODES, PROCEDURES, PROMPTS, FADING, SCHEDULES, THINNING, COLLECTORS } from './common.js';
 
 // One response reads as a sentence; several become a bulleted list.
 function staffWill(key, lead, items) {
   if (items.length === 1) return [{ type: 'p', key, text: `${lead} ${frag(items[0])}.` }];
   return [{ type: 'p', key, text: `${lead}:` }, { type: 'ul', items: items.map(fin) }];
 }
-
-const orList = (a) => (a.length <= 2 ? a.join(' or ') : a.slice(0, -1).join(', ') + ', or ' + a[a.length - 1]);
-
-const TARGETS = [
-  ['Aggression', 'aggression'],
-  ['Self-injurious behavior (SIB)', 'self-injurious behavior (SIB)'],
-  ['Elopement', 'elopement'],
-  ['Property destruction', 'property destruction'],
-  ['Tantrum behavior', 'tantrum behavior'],
-  ['Disruptive behavior', 'disruptive behavior'],
-  ['Noncompliance', 'noncompliance'],
-  ['Verbal aggression', 'verbal aggression'],
-  ['Pica', 'pica'],
-  ['Motor stereotypy', 'motor stereotypy'],
-  ['Vocal stereotypy', 'vocal stereotypy'],
-];
-
-const MEASURES = [
-  ['freq', 'Frequency (count)', 'frequency'],
-  ['rate', 'Rate per hour', 'rate per hour'],
-  ['dur_ep', 'Duration per episode', 'duration per episode'],
-  ['dur_tot', 'Total duration per session', 'total duration per session'],
-  ['pir', 'Partial interval recording (% of intervals)', 'percentage of intervals (partial interval recording)'],
-  ['wir', 'Whole interval recording (% of intervals)', 'percentage of intervals (whole interval recording)'],
-  ['mts', 'Momentary time sampling (% of samples)', 'percentage of momentary time samples'],
-  ['lat', 'Latency', 'latency'],
-  ['int', 'Intensity rating', 'intensity rating'],
-  ['opp', 'Percentage of opportunities', 'percentage of opportunities'],
-];
-const MEASURE_COMBO = MEASURES.map(([, l, p]) => [l, p]);
-
-const ASSESSMENTS = [
-  ['fai', 'Functional Assessment Interview (FAI)', 'a Functional Assessment Interview (FAI)'],
-  ['fast', 'Functional Analysis Screening Tool (FAST)', 'the Functional Analysis Screening Tool (FAST)'],
-  ['qabf', 'Questions About Behavioral Function (QABF)', 'the Questions About Behavioral Function (QABF)'],
-  ['mas', 'Motivation Assessment Scale (MAS)', 'the Motivation Assessment Scale (MAS)'],
-  ['abc_n', 'ABC narrative recording', 'ABC narrative recording'],
-  ['abc_c', 'ABC checklist recording', 'ABC checklist recording'],
-  ['scatter', 'Scatterplot', 'scatterplot data'],
-  ['records', 'Record review', 'a review of records'],
-  ['fa', 'Functional analysis (FA)', 'a functional analysis (FA)'],
-  ['iisca', 'Interview-informed synthesized contingency analysis (IISCA)', 'an interview-informed synthesized contingency analysis (IISCA)'],
-];
-
-const FUNCTIONS = [
-  ['escape', 'Escape / avoidance', 'escape from or avoidance of demands'],
-  ['attention', 'Attention', 'access to attention'],
-  ['tangible', 'Tangible', 'access to preferred items or activities'],
-  ['automatic', 'Automatic', 'automatic reinforcement'],
-];
 
 const CURRENT = [
   ['Task is removed or a break is given', 'removal of the task or a break'],
@@ -89,58 +40,6 @@ const REPLACEMENTS = [
   ['Engage with an alternative sensory item', 'engage with an alternative item that provides similar sensory stimulation'],
 ];
 
-const MODES = [
-  ['vocal', 'Vocal request', 'a vocal request'],
-  ['card', 'Picture card / PECS', 'a picture card'],
-  ['sign', 'Manual sign', 'a manual sign'],
-  ['aac', 'AAC device', 'an AAC device'],
-  ['gesture', 'Gesture', 'a gesture'],
-];
-
-const PROCEDURES = [
-  ['Functional communication training (FCT)', 'functional communication training (FCT)'],
-  ['Discrete trial training (DTT)', 'discrete trial training (DTT)'],
-  ['Natural environment teaching (NET)', 'natural environment teaching (NET)'],
-  ['Incidental teaching', 'incidental teaching'],
-  ['Behavioral skills training (BST)', 'behavioral skills training (BST)'],
-  ['Task analysis and chaining', 'task analysis and chaining'],
-];
-
-const PROMPTS = [
-  ['fp', 'Full physical', 'full physical'],
-  ['pp', 'Partial physical', 'partial physical'],
-  ['model', 'Model', 'model'],
-  ['gest', 'Gestural', 'gestural'],
-  ['vocal', 'Vocal / verbal', 'vocal'],
-  ['echoic', 'Echoic', 'echoic'],
-  ['visual', 'Visual', 'visual'],
-];
-
-const FADING = [
-  ['Most-to-least', 'most-to-least prompt fading'],
-  ['Least-to-most', 'least-to-most prompting'],
-  ['Constant time delay', 'constant time delay'],
-  ['Progressive time delay', 'progressive time delay'],
-  ['Graduated guidance', 'graduated guidance'],
-  ['Stimulus fading', 'stimulus fading'],
-];
-
-const SCHEDULES = [
-  ['Continuous (FR1)', 'a continuous (FR1) schedule'],
-  ['Fixed ratio (FR)', 'a fixed-ratio schedule'],
-  ['Variable ratio (VR)', 'a variable-ratio schedule'],
-  ['Fixed interval (FI)', 'a fixed-interval schedule'],
-  ['Variable interval (VI)', 'a variable-interval schedule'],
-];
-
-const THINNING = [
-  ['Delay to reinforcement', 'gradually increasing the delay to reinforcement'],
-  ['Demand fading', 'demand fading, gradually increasing the work required before reinforcement'],
-  ['Chained schedule', 'a chained schedule'],
-  ['Multiple schedule (signaled availability)', 'a multiple schedule that signals when reinforcement is and is not available'],
-  ['Ratio thinning', 'gradually increasing the ratio requirement'],
-];
-
 const TARGET_RESPONSES = [
   ['escext', 'Escape extinction (continue the demand)', 'continue the instruction with prompting as needed and without providing a break'],
   ['attext', 'Attention extinction (planned ignoring)', 'withhold attention for the behavior while monitoring for safety'],
@@ -156,13 +55,6 @@ const REPL_RESPONSES = [
   ['tan', 'Provide the item or activity immediately', 'provide the requested item or activity immediately'],
   ['help', 'Provide help immediately', 'provide the requested help immediately'],
   ['praise', 'Pair with specific praise', 'pair the reinforcer with behavior-specific praise'],
-];
-
-const COLLECTORS = [
-  ['rbt', 'Assigned RBT', 'the assigned RBT'],
-  ['bcba', 'Supervising BCBA', 'the supervising BCBA'],
-  ['cg', 'Caregiver', 'the caregiver'],
-  ['school', 'School staff', 'school staff'],
 ];
 
 const WHEN = [

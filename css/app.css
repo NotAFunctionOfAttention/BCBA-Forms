@@ -72,7 +72,7 @@ button.link { background: none; border: none; padding: 2px 4px; color: var(--acc
 .field { display: flex; flex-direction: column; gap: 3px; margin-bottom: 14px; }
 .field label, .field legend { font-weight: 600; font-size: 14px; }
 .hint { color: var(--muted); font-size: 12.5px; }
-input[type=text], input[type=date], input[type=password], textarea, select {
+input[type=text], input[type=date], input[type=number], input[type=password], textarea, select {
   font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
   background: var(--bg); color: var(--ink); width: 100%;
 }
@@ -146,3 +146,18 @@ fieldset.checks .hint { display: block; margin-bottom: 4px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--bg); text-align: left; }
 .chip.used { background: var(--edit-bg); border-color: var(--accent); }
+
+/* Results grid and image fields */
+.grid-wrap { overflow-x: auto; }
+table.grid { border-collapse: collapse; width: 100%; font-size: 14px; }
+table.grid th { text-align: left; font-weight: 600; padding: 4px; font-size: 13px; color: var(--muted); }
+table.grid td { padding: 3px; vertical-align: middle; }
+table.grid input, table.grid select { padding: 6px 8px; font-size: 15px; }
+table.grid input[type=number] { width: 4.5em; }
+table.grid td.calc { white-space: nowrap; color: var(--muted); font-size: 13px; padding: 0 6px; }
+.grid-actions { margin-top: 6px; }
+.img-field img { max-width: 100%; max-height: 260px; border: 1px solid var(--line); border-radius: 6px; display: block; margin-bottom: 6px; background: #fff; }
+.pv-fig { margin: 4px 0 10px; text-align: center; }
+.pv-fig img { max-width: 100%; max-height: 320px; }
+.pv-fig figcaption { font-size: 11.5px; font-style: italic; color: #333; }
+.pv-dl.wide th { width: 160px; }

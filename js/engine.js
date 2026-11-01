@@ -92,6 +92,7 @@ function accessor(form, data) {
     opt: (id) => (filled(id) ? String(raw(id)) : ''),
     list: (id) => { const l = lines(raw(id)); return l.length ? l : [mark(label(id))]; },
     paras: (id, { optional } = {}) => { const p = paras(raw(id)); return p.length || optional ? p : [mark(label(id))]; },
+    rows: (id) => (Array.isArray(data[id]) ? data[id] : []),
     multi: (id, { optional } = {}) => {
       const out = multiValues(fields[id], data);
       return out.length || optional ? out : [mark(label(id))];
@@ -193,12 +194,14 @@ export function modelToHTML(m) {
           if (b.stale) out.push('<div class="stale-note">Your answers changed after you edited this paragraph. <button type="button" class="link" data-act="revert">Use updated text</button> or <button type="button" class="link" data-act="keep">keep your wording</button>.</div>');
         }
         out.push('</div>');
+      } else if (b.type === 'image') {
+        out.push(`<figure class="pv-fig"><img src="${esc(b.src)}" alt="">${b.caption ? `<figcaption>${hl(b.caption)}</figcaption>` : ''}</figure>`);
       } else if (b.type === 'sub') {
         out.push(`<h3>${esc(b.text)}</h3>`);
       } else if (b.type === 'ul' || b.type === 'ol') {
         out.push(`<${b.type}>${b.items.map((i) => `<li>${hl(i)}</li>`).join('')}</${b.type}>`);
       } else if (b.type === 'dl') {
-        out.push(`<table class="pv-dl">${b.rows.map(([k, val]) => `<tr><th>${esc(k)}</th><td>${hl(val)}</td></tr>`).join('')}</table>`);
+        out.push(`<table class="pv-dl${b.wide ? ' wide' : ''}">${b.rows.map(([k, val]) => `<tr><th>${esc(k)}</th><td>${hl(val)}</td></tr>`).join('')}</table>`);
       } else if (b.type === 'table') {
         out.push(`<table class="pv-table"><tr>${b.head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr>`);
         for (const r of b.rows) {
