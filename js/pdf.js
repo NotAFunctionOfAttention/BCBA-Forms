@@ -25,6 +25,22 @@ function block(b) {
   switch (b.type) {
     case 'p': return { text: b.text, style: 'body' };
     case 'sub': return { text: b.text, style: 'h3' };
+    // A blank, ruled grid for recording data by hand.
+    case 'sheet':
+      return {
+        table: {
+          headerRows: 1, widths: b.widths, dontBreakRows: true,
+          heights: (i) => (i === 0 ? 'auto' : b.rowHeight || 22),
+          body: [
+            b.head.map((h) => ({ text: h, bold: true, fillColor: SHADE, fontSize: 8, alignment: 'center' })),
+            ...b.rows.map((r) => r.map((c) => (c && typeof c === 'object' ? { fontSize: 8.5, ...c } : { text: c ?? '', fontSize: 8.5 }))),
+          ],
+        },
+        layout: thinTable, margin: [0, 2, 0, 6],
+      };
+    // Labels with blank lines to fill in, e.g. "Date ____  Staff ____".
+    case 'fields':
+      return { columns: b.items.map((l) => ({ width: 'auto', text: [{ text: l + '  ', bold: true }, { text: '\u00a0'.repeat(b.blank || 26), decoration: 'underline' }] })), columnGap: 18, fontSize: 9.5, margin: [0, 4, 0, 6] };
     case 'svg':
       return { stack: [{ svg: b.svg, width: b.width || 470, alignment: 'center' }, b.caption ? { text: b.caption, style: 'caption' } : ''], margin: [0, 2, 0, 8], unbreakable: true };
     case 'image':
@@ -130,7 +146,8 @@ export function modelToPdf(m, payload) {
 
   return {
     pageSize: 'LETTER',
-    pageMargins: m.quick ? [42, 36, 42, 50] : [54, 64, 54, 58],
+    pageOrientation: m.landscape ? 'landscape' : 'portrait',
+    pageMargins: m.landscape ? [36, 28, 36, 40] : m.quick ? [42, 36, 42, 50] : [54, 64, 54, 58],
     info: { title: m.title, subject: m.title, creator: m.practice.name || '', producer: m.practice.name || '', ...(payload ? { AbaDocsData: payload } : {}) },
     header: (page) => (page === 1 || m.quick ? null : {
       columns: [
@@ -141,13 +158,13 @@ export function modelToPdf(m, payload) {
     }),
     footer: (page, pages) => ({
       stack: [
-        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 504, y2: 0, lineWidth: 0.5, lineColor: RULE }] },
+        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: m.landscape ? 720 : 504, y2: 0, lineWidth: 0.5, lineColor: RULE }] },
         { columns: [
           { text: 'CONFIDENTIAL: Contains protected health information.', alignment: 'left' },
           { text: (m.docDate ? m.docDate + '   ' : '') + `Page ${page} of ${pages}`, alignment: 'right' },
         ], margin: [0, 4, 0, 0] },
       ],
-      style: 'runFoot', margin: [54, 14, 54, 0],
+      style: 'runFoot', margin: m.landscape ? [36, 12, 36, 0] : [54, 14, 54, 0],
     }),
     content,
     defaultStyle: { font: 'Roboto', fontSize: m.quick ? 9.5 : 10, lineHeight: m.quick ? 1.15 : 1.25, color: INK },

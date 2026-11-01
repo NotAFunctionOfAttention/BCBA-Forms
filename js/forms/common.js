@@ -132,3 +132,42 @@ export const SERVICES = [
   ['Assessment or reassessment', 'Assessment or reassessment'],
   ['Other', 'Other'],
 ];
+
+// ---------- Printable data sheets ----------
+
+export const DS_ID_FIELD = {
+  id: 'ds_id', label: 'Identify the client on data sheets by', type: 'select',
+  hint: 'Data sheets are handled by many people. Choose the least identifying option that still keeps records straight.',
+  options: [['first', 'First name and last initial'], ['initials', 'Initials only'], ['id', 'Client ID only'], ['full', 'Full name']],
+};
+
+export function sheetIdentity(d) {
+  const name = String(d.client_name || '').trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  switch (d.ds_id) {
+    case 'full': return name;
+    case 'initials': return parts.map((p) => p[0].toUpperCase() + '.').join('');
+    case 'id': return d.client_id ? `Client ${d.client_id}` : '';
+    default: return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.` : name;
+  }
+}
+
+// Prompt codes in the order a hierarchy lists them, e.g. "full physical,
+// partial physical, model, gestural, then independent" -> FP, PP, M, G, I.
+const PROMPT_CODES = [
+  ['full physical', 'FP'], ['partial physical', 'PP'], ['full echoic', 'FE'], ['partial echoic', 'PE'],
+  ['full model', 'FM'], ['partial model', 'PM'], ['model', 'M'], ['gestural', 'G'], ['positional', 'POS'],
+  ['vocal', 'V'], ['visual', 'VIS'], ['independent', 'I'],
+];
+export function promptCodes(phrase) {
+  // "a full echoic model" is one prompt level, not an echoic plus a model.
+  let text = String(phrase || '').toLowerCase().replace(/echoic model/g, 'echoic');
+  const found = [];
+  for (const [name, code] of PROMPT_CODES) {
+    const at = text.indexOf(name);
+    if (at >= 0) { found.push({ at, name, code }); text = text.slice(0, at) + ' '.repeat(name.length) + text.slice(at + name.length); }
+  }
+  const out = found.sort((a, b) => a.at - b.at);
+  if (!out.some((p) => p.code === 'I')) out.push({ name: 'independent', code: 'I' });
+  return out;
+}

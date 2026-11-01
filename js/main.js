@@ -601,12 +601,14 @@ async function showEditor(id) {
   const exportPdf = async (btn, variant) => {
     model = buildModel(form, doc);
     const out = variant ? buildModel(form, doc, variant) : model;
-    if (out.missing.length || model.missing.length) {
-      const list = [...new Set([...model.missing, ...out.missing])];
+    // A standalone version (such as a data sheet) needs only its own answers.
+    const needed = variant && variant.standalone ? out.missing : [...new Set([...model.missing, ...out.missing])];
+    if (needed.length) {
+      const list = needed;
       await alertBox('Not ready to export', `<p>These items still need an answer:</p><ul class="missing-list">${list.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>`);
       return;
     }
-    const stale = model.sections.flatMap((s) => s.blocks).filter((b) => b.stale);
+    const stale = (variant && variant.standalone ? out : model).sections.flatMap((s) => s.blocks).filter((b) => b.stale);
     if (stale.length) {
       await alertBox('Check edited wording', `<p>${stale.length} paragraph${stale.length > 1 ? 's were' : ' was'} edited before later answer changes. On the Review tab, choose "Use updated text" or "keep your wording" for each one, then export.</p>`);
       return;

@@ -158,6 +158,7 @@ export function buildModel(form, doc, variant) {
   return {
     title: variant ? variant.title : form.title,
     quick: !!(variant && variant.quick),
+    landscape: !!(variant && variant.landscape),
     idLine: variant && variant.idLine ? variant.idLine(d) : '',
     practice: { name: d.practice_name, addr: d.practice_addr, phone: d.practice_phone, npi: d.practice_npi },
     clientLine: [d.client_name, d.client_dob ? 'DOB ' + fmtDate(d.client_dob) : '', d.client_id ? 'ID ' + d.client_id : ''].filter(Boolean).join('  |  '),
@@ -201,6 +202,10 @@ export function modelToHTML(m) {
           if (b.stale) out.push('<div class="stale-note">Your answers changed after you edited this paragraph. <button type="button" class="link" data-act="revert">Use updated text</button> or <button type="button" class="link" data-act="keep">keep your wording</button>.</div>');
         }
         out.push('</div>');
+      } else if (b.type === 'sheet') {
+        out.push(`<table class="pv-table"><tr>${b.head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr>${b.rows.map((r) => '<tr>' + r.map((c) => `<td>${hl(c && typeof c === 'object' ? c.text : c)}</td>`).join('') + '</tr>').join('')}</table>`);
+      } else if (b.type === 'fields') {
+        out.push(`<p>${b.items.map((l) => `${esc(l)} ________`).join('&nbsp;&nbsp; ')}</p>`);
       } else if (b.type === 'svg') {
         out.push(`<figure class="pv-fig pv-svg">${b.svg}${b.caption ? `<figcaption>${hl(b.caption)}</figcaption>` : ''}</figure>`);
       } else if (b.type === 'image') {

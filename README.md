@@ -43,6 +43,19 @@ Each option carries the exact phrase that goes into the document, so picking an 
 
 A form can define `variants`: another PDF built from the same answers. The caregiver training plan's **Family summary** and the discharge summary's **Summary for receiving staff** work the same way. The crisis plan's **Quick reference** button exports a one-page, two-column version to post where staff can see it, identifying the client by first name and last initial (or initials, client ID, or full name). If it runs past one page the app says so.
 
+## Data sheets
+
+A **Data sheet** button on four forms prints a one-page landscape sheet built from that document, with the definition and recording rule printed on it, a line for an IOA observer, and the client identified minimally (set under "Data sheet (printing)" at the end of the form). It needs only the answers the sheet uses, so it can be printed before the rest of the document is finished.
+
+| Form | Sheet |
+|---|---|
+| Skill Acquisition Program | Follows the data type: trial-by-trial with prompt codes taken from the prompt hierarchy, first-trial or probe (+/– across sessions), task analysis (steps × sessions), or duration |
+| BIP | Follows the first measure ticked: event recording with the replacement behavior alongside, duration, latency, or an interval grid (partial, whole, or momentary) with its recording rule |
+| FBA | ABC narrative, or an ABC checklist if ABC checklist recording is ticked |
+| Preference Assessment | Follows the format: MSWO or MSW, paired stimulus (every pair in round-robin order with balanced left and right positions), single stimulus, or free operant |
+
+Sheets are defined in `js/forms/datasheets.js` and attached in `js/forms/index.js`.
+
 ## Linked documents
 
 Documents can draw answers from earlier ones in two ways:
